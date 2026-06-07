@@ -1,0 +1,31 @@
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local Frame = Instance.new("Frame")
+Frame.Parent = ScreenGui
+Frame.Size = UDim2.new(0,300,0,200)
+Frame.Position = UDim2.new(0.5,-150,0.5,-100)
+Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Frame.BorderSizePixel = 0
+
+local Corner = Instance.new("UICorner")
+Corner.Parent = Frame
+Corner.CornerRadius = UDim.new(0,15)
+
+local Emoji = Instance.new("TextLabel")
+Emoji.Parent = Frame
+Emoji.Size = UDim2.new(1,0,0,80)
+Emoji.BackgroundTransparency = 1
+Emoji.Text = "🖕🏿"
+Emoji.TextScaled = true
+Emoji.Font = Enum.Font.SourceSansBold
+
+local Text = Instance.new("TextLabel")
+Text.Parent = Frame
+Text.Position = UDim2.new(0,0,0,90)
+Text.Size = UDim2.new(1,0,0,60)
+Text.BackgroundTransparency = 1
+Text.Text = "انت قحبه مصدق ياهطف والله انك غبي تصدث اني اسوي سكربت لك يا سوريا مهفن زبي يا شرموط قحبه السكربت لازم فلوس"
+Text.TextColor3 = Color3.fromRGB(255,255,255)
+Text.TextScaled = true
+Text.Font = Enum.Font.GothamBold
