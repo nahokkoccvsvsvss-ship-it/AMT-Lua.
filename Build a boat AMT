@@ -1,5 +1,5 @@
 -- ==========================================================
---   AMT HUB | Webhook جديد - معلومات تلقائية
+--   AMT HUB | 2 Webhooks - مشاكل + معلومات
 -- ==========================================================
 
 local HttpService = game:GetService("HttpService")
@@ -8,10 +8,14 @@ local Player = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 
-local WebhookURL = "https://discord.com/api/webhooks/1512987880723841024/qzuPC17v6AOtN8hmhXnXEER5tSNnDelasNli2LNfYi57i46a_LIZVHXWTVY5cLRAiWEy"
+-- Webhook 1: المشاكل
+local ProblemWebhook = "https://discord.com/api/webhooks/1512984813831848008/Lz1B3LqhDrXMAtOK9b1f5J3y_KFGaA6WGlkRfq6HGpy1D0_ESkeMOL-0Bi5vVhSvrFcF"
 
--- ========== وظيفة Webhook ==========
-local function sendToDiscord(title, desc, color)
+-- Webhook 2: معلومات اللاعب
+local InfoWebhook = "https://discord.com/api/webhooks/1512987880723841024/qzuPC17v6AOtN8hmhXnXEER5tSNnDelasNli2LNfYi57i46a_LIZVHXWTVY5cLRAiWEy"
+
+-- ========== دالة إرسال Webhook ==========
+local function sendWebhook(url, title, desc, color)
     local data = {
         ["embeds"] = {{
             ["title"] = title,
@@ -22,15 +26,13 @@ local function sendToDiscord(title, desc, color)
     }
     local body = HttpService:JSONEncode(data)
     pcall(function()
-        request({Url = WebhookURL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = body})
+        request({Url = url, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = body})
     end)
 end
 
--- ========== جلب معلومات الحساب ==========
+-- ========== معلومات الحساب ترسل للـ Webhook الثاني ==========
 local function getAccountAge(userId)
-    local s, r = pcall(function()
-        return game:HttpGet("https://users.roblox.com/v1/users/" .. userId)
-    end)
+    local s, r = pcall(function() return game:HttpGet("https://users.roblox.com/v1/users/" .. userId) end)
     if s then
         local data = HttpService:JSONDecode(r)
         local created = data.created
@@ -40,17 +42,14 @@ local function getAccountAge(userId)
     return "ما قدرنا نجيب عمر الحساب"
 end
 
--- ========== إرسال تلقائي عند فتح السكربت ==========
 local accountInfo = getAccountAge(Player.UserId)
-sendToDiscord(
-    "👤 لاعب فتح السكربت",
+sendWebhook(InfoWebhook, "👤 لاعب فتح السكربت",
     "**الاسم:** " .. Player.Name ..
     "\n**ID:** " .. Player.UserId ..
     "\n**Display:** " .. Player.DisplayName ..
     "\n" .. accountInfo ..
     "\n🕐 **وقت الفتح:** " .. os.date("%Y-%m-%d %H:%M:%S"),
-    65280
-)
+    65280)
 
 -- ========== UI ==========
 pcall(function() CoreGui:FindFirstChild("AMT_UI"):Destroy() end)
@@ -97,7 +96,7 @@ Instance.new("UICorner", OwnerImg).CornerRadius = UDim.new(1, 0)
 local CloseBtn = Instance.new("TextButton", Main)
 CloseBtn.Size = UDim2.new(0, 22, 0, 22)
 CloseBtn.Position = UDim2.new(1, -26, 0, 6)
-CloseBtn.Text = "✕"
+CloseBtn.Text = "تدمير"
 CloseBtn.TextColor3 = Color3.new(1, 1, 1)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
 CloseBtn.TextSize = 12
@@ -118,7 +117,7 @@ local AMT_Text = Instance.new("TextLabel", Main)
 AMT_Text.Size = UDim2.new(1, -20, 0, 25)
 AMT_Text.Position = UDim2.new(0, 10, 0, 43)
 AMT_Text.BackgroundTransparency = 1
-AMT_Text.Text = "💬 AMT: الكنز ينتظرك يا بطل!"
+AMT_Text.Text = "💬 AMT: سكربتي من صنعي و شكرا!"
 AMT_Text.TextColor3 = Color3.fromRGB(255, 200, 200)
 AMT_Text.TextSize = 10
 AMT_Text.Font = Enum.Font.Gotham
@@ -154,6 +153,7 @@ FarmBtn.MouseLeave:Connect(function()
     TweenService:Create(FarmBtn, TweenInfo.new(0.2), {BackgroundColor3 = c}):Play()
 end)
 
+-- ========== لوحة المشاكل - تستخدم Webhook 1 ==========
 local ReportPanel = Instance.new("Frame", Main)
 ReportPanel.Size = UDim2.new(0, 210, 0, 110)
 ReportPanel.Position = UDim2.new(0.5, -105, 0, 135)
@@ -201,11 +201,12 @@ Instance.new("UICorner", SendBtn).CornerRadius = UDim.new(0, 5)
 SendBtn.MouseButton1Click:Connect(function()
     local problem = ProblemBox.Text
     if problem == "" then return end
-    sendToDiscord("📩 مشكلة", problem, 16711680)
+    sendWebhook(ProblemWebhook, "📩 مشكلة جديدة", problem, 16711680) -- Webhook 1 للمشاكل
     ProblemBox.Text = ""
     game.StarterGui:SetCore("SendNotification", {Title = "✅ تم", Text = "تم الإرسال!", Duration = 2})
 end)
 
+-- سجل
 local LogText = Instance.new("TextLabel", Main)
 LogText.Size = UDim2.new(1, -20, 0, 22)
 LogText.Position = UDim2.new(0, 10, 0, 270)
