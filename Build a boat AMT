@@ -1,0 +1,301 @@
+-- ==========================================================
+--   AMT HUB | Webhook جديد - معلومات تلقائية
+-- ==========================================================
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+
+local WebhookURL = "https://discord.com/api/webhooks/1512987880723841024/qzuPC17v6AOtN8hmhXnXEER5tSNnDelasNli2LNfYi57i46a_LIZVHXWTVY5cLRAiWEy"
+
+-- ========== وظيفة Webhook ==========
+local function sendToDiscord(title, desc, color)
+    local data = {
+        ["embeds"] = {{
+            ["title"] = title,
+            ["description"] = desc,
+            ["color"] = color or 16711680,
+            ["footer"] = {["text"] = "AMT HUB | " .. os.date("%Y-%m-%d %H:%M:%S")}
+        }}
+    }
+    local body = HttpService:JSONEncode(data)
+    pcall(function()
+        request({Url = WebhookURL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = body})
+    end)
+end
+
+-- ========== جلب معلومات الحساب ==========
+local function getAccountAge(userId)
+    local s, r = pcall(function()
+        return game:HttpGet("https://users.roblox.com/v1/users/" .. userId)
+    end)
+    if s then
+        local data = HttpService:JSONDecode(r)
+        local created = data.created
+        local days = math.floor((os.time() - os.time({year=tonumber(created:sub(1,4)), month=tonumber(created:sub(6,7)), day=tonumber(created:sub(9,10))})) / 86400)
+        return "🗓 عمر الحساب: " .. days .. " يوم\n📅 تاريخ الإنشاء: " .. created:sub(1,10)
+    end
+    return "ما قدرنا نجيب عمر الحساب"
+end
+
+-- ========== إرسال تلقائي عند فتح السكربت ==========
+local accountInfo = getAccountAge(Player.UserId)
+sendToDiscord(
+    "👤 لاعب فتح السكربت",
+    "**الاسم:** " .. Player.Name ..
+    "\n**ID:** " .. Player.UserId ..
+    "\n**Display:** " .. Player.DisplayName ..
+    "\n" .. accountInfo ..
+    "\n🕐 **وقت الفتح:** " .. os.date("%Y-%m-%d %H:%M:%S"),
+    65280
+)
+
+-- ========== UI ==========
+pcall(function() CoreGui:FindFirstChild("AMT_UI"):Destroy() end)
+
+local GUI = Instance.new("ScreenGui", CoreGui)
+GUI.Name = "AMT_UI"
+GUI.ResetOnSpawn = false
+
+local Main = Instance.new("Frame", GUI)
+Main.Size = UDim2.new(0, 240, 0, 300)
+Main.Position = UDim2.new(0.5, -120, 0.5, -150)
+Main.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+Main.BorderSizePixel = 0
+Main.Draggable = true
+Main.Active = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+Instance.new("UIStroke", Main).Color = Color3.fromRGB(255, 30, 30)
+Instance.new("UIStroke", Main).Thickness = 2
+
+local TitleBar = Instance.new("Frame", Main)
+TitleBar.Size = UDim2.new(1, 0, 0, 35)
+TitleBar.BackgroundColor3 = Color3.fromRGB(255, 20, 20)
+TitleBar.BackgroundTransparency = 0.85
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+
+local TitleText = Instance.new("TextLabel", TitleBar)
+TitleText.Size = UDim2.new(1, -30, 1, 0)
+TitleText.Position = UDim2.new(0, 35, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "🔥 AMT HUB"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.TextSize = 14
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+
+local OwnerImg = Instance.new("ImageLabel", TitleBar)
+OwnerImg.Size = UDim2.new(0, 24, 0, 24)
+OwnerImg.Position = UDim2.new(0, 6, 0, 5)
+OwnerImg.BackgroundTransparency = 1
+OwnerImg.Image = "rbxassetid://83489151551233"
+OwnerImg.ScaleType = Enum.ScaleType.Stretch
+Instance.new("UICorner", OwnerImg).CornerRadius = UDim.new(1, 0)
+
+local CloseBtn = Instance.new("TextButton", Main)
+CloseBtn.Size = UDim2.new(0, 22, 0, 22)
+CloseBtn.Position = UDim2.new(1, -26, 0, 6)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
+CloseBtn.TextSize = 12
+CloseBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(1, 0)
+CloseBtn.MouseButton1Click:Connect(function()
+    getgenv().Farming = false
+    GUI:Destroy()
+end)
+
+local Line = Instance.new("Frame", Main)
+Line.Size = UDim2.new(1, -20, 0, 1)
+Line.Position = UDim2.new(0, 10, 0, 38)
+Line.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
+Line.BackgroundTransparency = 0.5
+
+local AMT_Text = Instance.new("TextLabel", Main)
+AMT_Text.Size = UDim2.new(1, -20, 0, 25)
+AMT_Text.Position = UDim2.new(0, 10, 0, 43)
+AMT_Text.BackgroundTransparency = 1
+AMT_Text.Text = "💬 AMT: الكنز ينتظرك يا بطل!"
+AMT_Text.TextColor3 = Color3.fromRGB(255, 200, 200)
+AMT_Text.TextSize = 10
+AMT_Text.Font = Enum.Font.Gotham
+AMT_Text.TextXAlignment = Enum.TextXAlignment.Left
+
+local StatusBar = Instance.new("TextLabel", Main)
+StatusBar.Size = UDim2.new(1, -20, 0, 18)
+StatusBar.Position = UDim2.new(0, 10, 0, 70)
+StatusBar.BackgroundTransparency = 1
+StatusBar.Text = "⚡ جاهز للانطلاق"
+StatusBar.TextColor3 = Color3.fromRGB(255, 150, 150)
+StatusBar.TextSize = 10
+StatusBar.Font = Enum.Font.Gotham
+StatusBar.TextXAlignment = Enum.TextXAlignment.Left
+
+local FarmBtn = Instance.new("TextButton", Main)
+FarmBtn.Size = UDim2.new(0, 200, 0, 35)
+FarmBtn.Position = UDim2.new(0.5, -100, 0, 92)
+FarmBtn.Text = "▶ تشغيل الفارم"
+FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
+FarmBtn.TextColor3 = Color3.new(1, 1, 1)
+FarmBtn.TextSize = 13
+FarmBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", FarmBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", FarmBtn).Color = Color3.fromRGB(255, 80, 80)
+Instance.new("UIStroke", FarmBtn).Thickness = 1.5
+
+FarmBtn.MouseEnter:Connect(function()
+    TweenService:Create(FarmBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 40, 40)}):Play()
+end)
+FarmBtn.MouseLeave:Connect(function()
+    local c = getgenv().Farming and Color3.fromRGB(150, 10, 10) or Color3.fromRGB(200, 20, 20)
+    TweenService:Create(FarmBtn, TweenInfo.new(0.2), {BackgroundColor3 = c}):Play()
+end)
+
+local ReportPanel = Instance.new("Frame", Main)
+ReportPanel.Size = UDim2.new(0, 210, 0, 110)
+ReportPanel.Position = UDim2.new(0.5, -105, 0, 135)
+ReportPanel.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
+ReportPanel.BorderSizePixel = 0
+Instance.new("UICorner", ReportPanel).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", ReportPanel).Color = Color3.fromRGB(255, 60, 60)
+Instance.new("UIStroke", ReportPanel).Thickness = 1
+
+local ReportTitle = Instance.new("TextLabel", ReportPanel)
+ReportTitle.Size = UDim2.new(1, 0, 0, 16)
+ReportTitle.Position = UDim2.new(0, 0, 0, 3)
+ReportTitle.BackgroundTransparency = 1
+ReportTitle.Text = "📩 إبلاغ عن مشكلة"
+ReportTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
+ReportTitle.TextSize = 10
+ReportTitle.Font = Enum.Font.GothamBold
+
+local ProblemBox = Instance.new("TextBox", ReportPanel)
+ProblemBox.Size = UDim2.new(0, 190, 0, 50)
+ProblemBox.Position = UDim2.new(0.5, -95, 0, 22)
+ProblemBox.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+ProblemBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+ProblemBox.PlaceholderText = "اكتب مشكلتك هنا..."
+ProblemBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+ProblemBox.TextSize = 10
+ProblemBox.Font = Enum.Font.Gotham
+ProblemBox.TextXAlignment = Enum.TextXAlignment.Left
+ProblemBox.TextYAlignment = Enum.TextYAlignment.Top
+ProblemBox.TextWrapped = true
+ProblemBox.Text = ""
+ProblemBox.BorderSizePixel = 0
+Instance.new("UICorner", ProblemBox).CornerRadius = UDim.new(0, 5)
+
+local SendBtn = Instance.new("TextButton", ReportPanel)
+SendBtn.Size = UDim2.new(0, 190, 0, 25)
+SendBtn.Position = UDim2.new(0.5, -95, 0, 78)
+SendBtn.Text = "📤 إرسال المشكلة"
+SendBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
+SendBtn.TextColor3 = Color3.new(1, 1, 1)
+SendBtn.TextSize = 11
+SendBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", SendBtn).CornerRadius = UDim.new(0, 5)
+
+SendBtn.MouseButton1Click:Connect(function()
+    local problem = ProblemBox.Text
+    if problem == "" then return end
+    sendToDiscord("📩 مشكلة", problem, 16711680)
+    ProblemBox.Text = ""
+    game.StarterGui:SetCore("SendNotification", {Title = "✅ تم", Text = "تم الإرسال!", Duration = 2})
+end)
+
+local LogText = Instance.new("TextLabel", Main)
+LogText.Size = UDim2.new(1, -20, 0, 22)
+LogText.Position = UDim2.new(0, 10, 0, 270)
+LogText.BackgroundTransparency = 1
+LogText.Text = "AMT HUB v1.0 | جاهز"
+LogText.TextColor3 = Color3.fromRGB(255, 200, 200)
+LogText.TextSize = 9
+LogText.Font = Enum.Font.Code
+
+function updateLog(msg) LogText.Text = msg end
+
+getgenv().Farming = false
+
+local function createPlatform(pos)
+    local p = Instance.new("Part", workspace)
+    p.Size = Vector3.new(12, 0.5, 12)
+    p.Position = pos - Vector3.new(0, 4.5, 0)
+    p.Anchored = true
+    p.CanCollide = true
+    p.BrickColor = BrickColor.new("Bright red")
+    p.Material = Enum.Material.Neon
+    p.Transparency = 0.4
+    game:GetService("Debris"):AddItem(p, 90)
+end
+
+local function openChestNOW()
+    local target = CFrame.new(-51, -360, 9498)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Position and (obj.Position - target.Position).Magnitude < 50 then
+            if obj:FindFirstChild("ClickDetector") then pcall(function() fireclickdetector(obj.ClickDetector) end) end
+            if obj:FindFirstChild("ProximityPrompt") then pcall(function() fireproximityprompt(obj.ProximityPrompt) end) end
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if getgenv().Farming then
+            local char = Player.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+            local hrp = char.HumanoidRootPart
+            
+            for i = 1, 10 do
+                if not getgenv().Farming then break end
+                StatusBar.Text = "📍 " .. i .. "/10"
+                updateLog("🚀 مرحلة " .. i)
+                
+                local stage = workspace.BoatStages.NormalStages:FindFirstChild("CaveStage" .. i)
+                if stage and stage:FindFirstChild("DarknessPart") then
+                    createPlatform(stage.DarknessPart.Position)
+                    hrp.CFrame = stage.DarknessPart.CFrame + Vector3.new(0, 5, 0)
+                end
+                task.wait(2.5)
+            end
+            
+            if not getgenv().Farming then break end
+            
+            StatusBar.Text = "🏆 الكنز"
+            updateLog("💛 فتح الكنز...")
+            
+            local cp = Vector3.new(-51, -360, 9498)
+            createPlatform(cp)
+            hrp.CFrame = CFrame.new(cp + Vector3.new(0, 3, 0))
+            task.wait(0.5)
+            openChestNOW()
+            
+            updateLog("🎉 تم فتح الكنز!")
+            game.StarterGui:SetCore("SendNotification", {Title = "🏆 AMT", Text = "تم فتح الكنز!", Duration = 2})
+            
+            task.wait(12)
+            if not getgenv().Farming then break end
+            
+            if char:FindFirstChild("Humanoid") then char.Humanoid.Health = 0 end
+            task.wait(6)
+        end
+    end
+end)
+
+FarmBtn.MouseButton1Click:Connect(function()
+    getgenv().Farming = not getgenv().Farming
+    if getgenv().Farming then
+        FarmBtn.Text = "⏹ إيقاف"
+        FarmBtn.BackgroundColor3 = Color3.fromRGB(150, 10, 10)
+        updateLog("🔥 اشتغلنا!")
+    else
+        FarmBtn.Text = "▶ تشغيل"
+        FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
+        updateLog("💤 توقف")
+    end
+end)
+
+game.StarterGui:SetCore("SendNotification", {Title = "🔥 AMT HUB", Text = "تم التحميل", Duration = 2})
+updateLog("⚡ AMT HUB v1.0 | جاهز")
