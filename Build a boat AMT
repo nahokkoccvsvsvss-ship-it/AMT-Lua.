@@ -1,5 +1,5 @@
 -- ==========================================================
---   AMT HUB | أنميشين + قائمة جميلة + زر طي
+--   AMT HUB | أنميشين + قائمة + درة للفتح والإغلاق
 -- ==========================================================
 
 local HttpService = game:GetService("HttpService")
@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 -- Webhook 1: المشاكل
 local ProblemWebhook = "https://discord.com/api/webhooks/1512984813831848008/Lz1B3LqhDrXMAtOK9b1f5J3y_KFGaA6WGlkRfq6HGpy1D0_ESkeMOL-0Bi5vVhSvrFcF"
@@ -14,8 +15,11 @@ local ProblemWebhook = "https://discord.com/api/webhooks/1512984813831848008/Lz1
 -- Webhook 2: معلومات اللاعب
 local InfoWebhook = "https://discord.com/api/webhooks/1512987880723841024/qzuPC17v6AOtN8hmhXnXEER5tSNnDelasNli2LNfYi57i46a_LIZVHXWTVY5cLRAiWEy"
 
--- صورتك
-local YourImage = "https://cdn.discordapp.com/attachments/1512982349069942927/1513727099628814536/image-4.jpg?ex=6a28c7b8&is=6a277638&hm=e2969e9f1b39b70d8680fa01b467e099bfbb2c0adf008c1e4aac412ebcaf8d11&"
+-- صورة الـ Webhook (الجديدة)
+local WebhookImage = "https://cdn.discordapp.com/attachments/1507116033515847856/1513923886268420138/IMG__.jpg?ex=6a297efd&is=6a282d7d&hm=5487b519f8200d1b00f914735dd74571e6d2594d475f24272ba95eb37d0272dd&"
+
+-- صورتك الشخصية في السكربت
+local YourImage = "rbxthumb://type=Asset&id=81610241171872&w=150&h=150"
 
 -- ========== دالة إرسال Webhook ==========
 local function sendWebhook(url, title, desc, color, image)
@@ -34,7 +38,7 @@ local function sendWebhook(url, title, desc, color, image)
     end)
 end
 
--- ========== معلومات الحساب مع صورتك ==========
+-- ========== معلومات الحساب مع الصورة الجديدة ==========
 local function getAccountAge(userId)
     local s, r = pcall(function() return game:HttpGet("https://users.roblox.com/v1/users/" .. userId) end)
     if s then
@@ -54,7 +58,7 @@ sendWebhook(InfoWebhook, "👤 لاعب فتح السكربت",
     "\n" .. accountInfo ..
     "\n🕐 **وقت الفتح:** " .. os.date("%Y-%m-%d %H:%M:%S"),
     65280,
-    YourImage)
+    WebhookImage)
 
 -- ========== UI ==========
 pcall(function() CoreGui:FindFirstChild("AMT_UI"):Destroy() end)
@@ -62,6 +66,44 @@ pcall(function() CoreGui:FindFirstChild("AMT_UI"):Destroy() end)
 local GUI = Instance.new("ScreenGui", CoreGui)
 GUI.Name = "AMT_UI"
 GUI.ResetOnSpawn = false
+
+-- ========== الدرة (الأيقونة) لفتح القائمة ==========
+local ToggleButton = Instance.new("ImageButton", GUI)
+ToggleButton.Size = UDim2.new(0, 50, 0, 50)
+ToggleButton.Position = UDim2.new(0, 10, 0, 100)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+ToggleButton.BackgroundTransparency = 0.2
+ToggleButton.Image = YourImage
+ToggleButton.ScaleType = Enum.ScaleType.Stretch
+Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", ToggleButton).Color = Color3.fromRGB(255, 50, 50)
+Instance.new("UIStroke", ToggleButton).Thickness = 2
+
+-- جعل الدرة قابلة للسحب
+local dragging = false
+local dragStart
+local startPos
+
+ToggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleButton.Position
+    end
+end)
+
+ToggleButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
 -- ========== أنميشين قبل القائمة ==========
 local AnimFrame = Instance.new("Frame", GUI)
@@ -77,7 +119,7 @@ local AnimImage = Instance.new("ImageLabel", AnimFrame)
 AnimImage.Size = UDim2.new(0, 70, 0, 70)
 AnimImage.Position = UDim2.new(0, -80, 0, 10)
 AnimImage.BackgroundTransparency = 1
-AnimImage.Image = "rbxthumb://type=Asset&id=81610241171872&w=150&h=150"
+AnimImage.Image = YourImage
 Instance.new("UICorner", AnimImage).CornerRadius = UDim.new(1, 0)
 
 local AnimText = Instance.new("TextLabel", AnimFrame)
@@ -106,15 +148,18 @@ local function StartAnimation()
     end)
 end
 
--- ========== القائمة الرئيسية (التصميم الجميل الأصلي) ==========
+-- ========== القائمة الرئيسية ==========
+local Main = nil -- نعرفها كمتغير عام
+
 function CreateMainUI()
-    local Main = Instance.new("Frame", GUI)
+    Main = Instance.new("Frame", GUI)
     Main.Size = UDim2.new(0, 240, 0, 420)
     Main.Position = UDim2.new(0.5, -120, 0.5, -210)
     Main.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     Main.BorderSizePixel = 0
     Main.Draggable = true
     Main.Active = true
+    Main.Visible = true
     Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
     Instance.new("UIStroke", Main).Color = Color3.fromRGB(255, 30, 30)
     Instance.new("UIStroke", Main).Thickness = 2
@@ -122,12 +167,13 @@ function CreateMainUI()
     -- شريط العنوان
     local TitleBar = Instance.new("Frame", Main)
     TitleBar.Size = UDim2.new(1, 0, 0, 35)
+    TitleBar.Position = UDim2.new(0, 0, 0, 0)
     TitleBar.BackgroundColor3 = Color3.fromRGB(255, 20, 20)
     TitleBar.BackgroundTransparency = 0.85
     Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
     
     local TitleText = Instance.new("TextLabel", TitleBar)
-    TitleText.Size = UDim2.new(1, -30, 1, 0)
+    TitleText.Size = UDim2.new(1, -60, 1, 0)
     TitleText.Position = UDim2.new(0, 35, 0, 0)
     TitleText.BackgroundTransparency = 1
     TitleText.Text = "🔥 AMT HUB"
@@ -140,14 +186,14 @@ function CreateMainUI()
     OwnerImg.Size = UDim2.new(0, 24, 0, 24)
     OwnerImg.Position = UDim2.new(0, 6, 0, 5)
     OwnerImg.BackgroundTransparency = 1
-    OwnerImg.Image = "rbxthumb://type=Asset&id=81610241171872&w=150&h=150"
+    OwnerImg.Image = YourImage
     OwnerImg.ScaleType = Enum.ScaleType.Stretch
     Instance.new("UICorner", OwnerImg).CornerRadius = UDim.new(1, 0)
     
     -- زر الترجمة
     local TranslateBtn = Instance.new("TextButton", TitleBar)
     TranslateBtn.Size = UDim2.new(0, 50, 0, 24)
-    TranslateBtn.Position = UDim2.new(1, -105, 0, 5)
+    TranslateBtn.Position = UDim2.new(1, -80, 0, 5)
     TranslateBtn.Text = "🇺🇸 English"
     TranslateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     TranslateBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0, 0.5)
@@ -155,60 +201,27 @@ function CreateMainUI()
     TranslateBtn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", TranslateBtn).CornerRadius = UDim.new(1, 0)
     
-    -- زر الطي (-)
-    local MinimizeBtn = Instance.new("TextButton", TitleBar)
-    MinimizeBtn.Size = UDim2.new(0, 24, 0, 24)
-    MinimizeBtn.Position = UDim2.new(1, -52, 0, 5)
-    MinimizeBtn.Text = "−"
-    MinimizeBtn.TextColor3 = Color3.new(1, 1, 1)
-    MinimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-    MinimizeBtn.TextSize = 18
-    MinimizeBtn.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(1, 0)
-    
-    -- زر الإغلاق
+    -- زر الإغلاق (X) - يخفي القائمة فقط
     local CloseBtn = Instance.new("TextButton", TitleBar)
     CloseBtn.Size = UDim2.new(0, 24, 0, 24)
     CloseBtn.Position = UDim2.new(1, -26, 0, 5)
-    CloseBtn.Text = "<>"
+    CloseBtn.Text = "✕"
     CloseBtn.TextColor3 = Color3.new(1, 1, 1)
     CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
     CloseBtn.TextSize = 14
     CloseBtn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(1, 0)
     
-    -- حالة الطي
-    local isMinimized = false
-    local fullSize = UDim2.new(0, 240, 0, 420)
-    local minimizedSize = UDim2.new(0, 240, 0, 35)
-    
-    local elementsToHide = {}
-    
-    local function ToggleMinimize()
-        isMinimized = not isMinimized
-        if isMinimized then
-            for _, child in pairs(Main:GetChildren()) do
-                if child ~= TitleBar then
-                    elementsToHide[#elementsToHide+1] = child
-                    child.Visible = false
-                end
-            end
-            TweenService:Create(Main, TweenInfo.new(0.2), {Size = minimizedSize}):Play()
-            MinimizeBtn.Text = "+"
-        else
-            for _, child in pairs(elementsToHide) do
-                if child then child.Visible = true end
-            end
-            TweenService:Create(Main, TweenInfo.new(0.2), {Size = fullSize}):Play()
-            MinimizeBtn.Text = "−"
-        end
-    end
-    
-    MinimizeBtn.MouseButton1Click:Connect(ToggleMinimize)
-    
+    -- زر الإغلاق يخفي القائمة فقط (ما يغلق السكربت)
     CloseBtn.MouseButton1Click:Connect(function()
-        getgenv().Farming = false
-        GUI:Destroy()
+        Main.Visible = false
+        ToggleButton.Visible = true
+    end)
+    
+    -- الدرة تفتح القائمة
+    ToggleButton.MouseButton1Click:Connect(function()
+        Main.Visible = true
+        ToggleButton.Visible = false
     end)
     
     local Line = Instance.new("Frame", Main)
@@ -493,3 +506,4 @@ end
 
 -- بدء التشغيل
 StartAnimation()
+ToggleButton.Visible = true
