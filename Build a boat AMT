@@ -1,5 +1,5 @@
 -- ==========================================================
---   AMT HUB | أنميشين + قائمة + درة للفتح والإغلاق
+--  AMT HUB | النسخة النهائية الكاملة (مصلحة)
 -- ==========================================================
 
 local HttpService = game:GetService("HttpService")
@@ -8,82 +8,265 @@ local Player = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
--- Webhook 1: المشاكل
+-- Webhooks
 local ProblemWebhook = "https://discord.com/api/webhooks/1512984813831848008/Lz1B3LqhDrXMAtOK9b1f5J3y_KFGaA6WGlkRfq6HGpy1D0_ESkeMOL-0Bi5vVhSvrFcF"
-
--- Webhook 2: معلومات اللاعب
 local InfoWebhook = "https://discord.com/api/webhooks/1512987880723841024/qzuPC17v6AOtN8hmhXnXEER5tSNnDelasNli2LNfYi57i46a_LIZVHXWTVY5cLRAiWEy"
-
--- صورة الـ Webhook (الجديدة)
 local WebhookImage = "https://cdn.discordapp.com/attachments/1507116033515847856/1513923886268420138/IMG__.jpg?ex=6a297efd&is=6a282d7d&hm=5487b519f8200d1b00f914735dd74571e6d2594d475f24272ba95eb37d0272dd&"
-
--- صورتك الشخصية في السكربت
 local YourImage = "rbxthumb://type=Asset&id=81610241171872&w=150&h=150"
 
--- ========== دالة إرسال Webhook ==========
+local isArabic = true
+local stagesReady = false
+local goldGoal = 0
+local goalReached = false
+
+-- ========== فلتر الكلمات ==========
+local badWords = {"كس", "امك", "أمك", "قحبه", "قحبة", "شرموط", "شرموطة", "مينوك", "منيوك", "عاهر", "زب", "كس امك", "لعن", "قحب", "متناكة", "خول", "عير", "بز", "طيز", "كلب", "حرامي", "منيك", "fuck", "shit", "bitch", "whore"}
+local function containsBadWord(text)
+    local lowerText = string.lower(text)
+    for _, word in ipairs(badWords) do
+        if string.find(lowerText, string.lower(word)) then
+            return true
+        end
+    end
+    return false
+end
+
+-- ========== إرسال Webhook ==========
 local function sendWebhook(url, title, desc, color, image)
-    local data = {
-        ["embeds"] = {{
-            ["title"] = title,
-            ["description"] = desc,
-            ["color"] = color or 16711680,
-            ["image"] = image and {["url"] = image} or nil,
-            ["footer"] = {["text"] = "AMT HUB | " .. os.date("%Y-%m-%d %H:%M:%S")}
-        }}
-    }
-    local body = HttpService:JSONEncode(data)
+    local data = {["embeds"] = {{["title"] = title, ["description"] = desc, ["color"] = color or 16711680, ["image"] = image and {["url"] = image} or nil, ["footer"] = {["text"] = "AMT HUB | " .. os.date("%Y-%m-%d %H:%M:%S")}}}}
     pcall(function()
-        request({Url = url, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = body})
+        request({Url = url, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)})
     end)
 end
 
--- ========== معلومات الحساب مع الصورة الجديدة ==========
+-- ========== معلومات الحساب ==========
 local function getAccountAge(userId)
     local s, r = pcall(function() return game:HttpGet("https://users.roblox.com/v1/users/" .. userId) end)
     if s then
         local data = HttpService:JSONDecode(r)
         local created = data.created
         local days = math.floor((os.time() - os.time({year=tonumber(created:sub(1,4)), month=tonumber(created:sub(6,7)), day=tonumber(created:sub(9,10))})) / 86400)
-        return "🗓 عمر الحساب: " .. days .. " يوم\n📅 تاريخ الإنشاء: " .. created:sub(1,10)
+        return days
     end
-    return "ما قدرنا نجيب عمر الحساب"
+    return nil
 end
 
-local accountInfo = getAccountAge(Player.UserId)
-sendWebhook(InfoWebhook, "👤 لاعب فتح السكربت",
-    "**الاسم:** " .. Player.Name ..
-    "\n**ID:** " .. Player.UserId ..
-    "\n**Display:** " .. Player.DisplayName ..
-    "\n" .. accountInfo ..
-    "\n🕐 **وقت الفتح:** " .. os.date("%Y-%m-%d %H:%M:%S"),
-    65280,
-    WebhookImage)
+local accountAgeDays = getAccountAge(Player.UserId)
+
+-- جلب عدد الأصدقاء بشكل صحيح
+local friendCount = "?"
+pcall(function()
+    local response = game:HttpGet("https://friends.roblox.com/v1/users/" .. Player.UserId .. "/friends/count")
+    local data = HttpService:JSONDecode(response)
+    friendCount = data.count or "?"
+end)
+
+local executorName = (identifyexecutor and identifyexecutor()) or "غير معروف"
+local deviceType = (UserInputService.TouchEnabled and not UserInputService.MouseEnabled) and "📱 جوال" or "💻 كمبيوتر"
+local isPremium = Player.MembershipType == Enum.MembershipType.Premium and "✅ نعم" or "❌ لا"
+
+local gameName = "جاري التحميل..."
+pcall(function()
+    gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+end)
+
+local profileLink = "https://www.roblox.com/users/" .. Player.UserId .. "/profile"
+local accountAgeText = accountAgeDays and "🗓 عمر الحساب: " .. accountAgeDays .. " يوم" or "ما قدرنا نجيب عمر الحساب"
+
+sendWebhook(InfoWebhook, "👤 لاعب فتح السكربت - AMT HUB",
+    "**━━━━━━━━━━━━━━━━━━━━**\n**🆔 معلومات الحساب:**\n└ الاسم: `" .. Player.Name .. "`\n└ ID: `" .. Player.UserId .. "`\n└ Display: `" .. Player.DisplayName .. "`\n└ " .. accountAgeText .. "\n└ 👥 عدد الأصدقاء: `" .. friendCount .. "`\n└ 🔗 [رابط البروفايل](" .. profileLink .. ")\n\n**━━━━━━━━━━━━━━━━━━━━**\n**🎮 معلومات اللعبة:**\n└ اسم اللعبة: `" .. gameName .. "`\n└ Place ID: `" .. game.PlaceId .. "`\n└ Job ID: `" .. game.JobId .. "`\n\n**━━━━━━━━━━━━━━━━━━━━**\n**💻 معلومات الجهاز:**\n└ نوع الجهاز: " .. deviceType .. "\n└ المحاكي: `" .. executorName .. "`\n└ بريميوم: " .. isPremium .. "\n\n**━━━━━━━━━━━━━━━━━━━━**\n**🕐 وقت الفتح:** " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n**━━━━━━━━━━━━━━━━━━━━**",
+    65280, WebhookImage)
 
 -- ========== UI ==========
 pcall(function() CoreGui:FindFirstChild("AMT_UI"):Destroy() end)
-
 local GUI = Instance.new("ScreenGui", CoreGui)
 GUI.Name = "AMT_UI"
 GUI.ResetOnSpawn = false
 
--- ========== الدرة (الأيقونة) لفتح القائمة ==========
+-- ========== فحص المراحل ==========
+task.spawn(function()
+    for i = 1, 30 do
+        local allExist = true
+        for j = 1, 10 do
+            local stage = workspace:FindFirstChild("BoatStages") and workspace.BoatStages:FindFirstChild("NormalStages") and workspace.BoatStages.NormalStages:FindFirstChild("CaveStage" .. j)
+            if not stage then allExist = false break end
+        end
+        if allExist then stagesReady = true break end
+        task.wait(1)
+    end
+end)
+
+-- ========== متتبع الذهب ==========
+local TrackerFrame, TotalGoldText, EarnedGoldText, ProgressBarFill, GoalInput, SetGoalBtn, TrackerStroke
+
+local function UpdateProgressBar(current, target)
+    local percentage = math.clamp(current / math.max(target, 1), 0, 1)
+    if ProgressBarFill then ProgressBarFill:TweenSize(UDim2.new(percentage, 0, 1, 0), "Out", "Quad", 0.3, true) end
+end
+
+local function ShowGoalEffect()
+    if not TrackerStroke then return end
+    for i = 1, 5 do
+        TweenService:Create(TrackerStroke, TweenInfo.new(0.1), {Color = Color3.fromRGB(0, 255, 0)}):Play()
+        task.wait(0.08)
+        TweenService:Create(TrackerStroke, TweenInfo.new(0.1), {Color = Color3.fromRGB(255, 215, 0)}):Play()
+        task.wait(0.08)
+    end
+    game.StarterGui:SetCore("SendNotification", {Title = isArabic and "🎯 تم تحقيق الهدف!" or "🎯 Goal Achieved!", Text = (isArabic and "تم جمع " or "Collected ") .. goldGoal .. (isArabic and " ذهب" : " gold"), Duration = 4})
+    sendWebhook(ProblemWebhook, isArabic and "🎯 تم تحقيق هدف الذهب" or "🎯 Gold Goal Achieved", "**Player:** " .. Player.Name .. " (`" .. Player.UserId .. "`)\n**Goal:** " .. goldGoal .. " gold\n**Game:** " .. gameName, 65280, nil)
+end
+
+local function CreateTracker()
+    TrackerFrame = Instance.new("Frame", GUI)
+    TrackerFrame.Size = UDim2.new(0, 220, 0, 90)
+    TrackerFrame.Position = UDim2.new(0.5, -110, 0, 15)
+    TrackerFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    TrackerFrame.BackgroundTransparency = 0.15
+    TrackerFrame.Active = true
+    TrackerFrame.Draggable = true
+    TrackerFrame.Visible = false
+    Instance.new("UICorner", TrackerFrame).CornerRadius = UDim.new(0, 10)
+    TrackerStroke = Instance.new("UIStroke", TrackerFrame)
+    TrackerStroke.Color = Color3.fromRGB(255, 215, 0)
+    TrackerStroke.Thickness = 2
+    
+    local GoldIcon = Instance.new("ImageLabel", TrackerFrame)
+    GoldIcon.Size = UDim2.new(0, 24, 0, 24)
+    GoldIcon.Position = UDim2.new(0, 10, 0, 8)
+    GoldIcon.BackgroundTransparency = 1
+    GoldIcon.Image = "rbxassetid://6031092413"
+    
+    TotalGoldText = Instance.new("TextLabel", TrackerFrame)
+    TotalGoldText.Size = UDim2.new(1, -50, 0, 20)
+    TotalGoldText.Position = UDim2.new(0, 45, 0, 5)
+    TotalGoldText.BackgroundTransparency = 1
+    TotalGoldText.Text = isArabic and "🏦 الإجمالي: جاري التحميل..." or "🏦 Total: Loading..."
+    TotalGoldText.TextColor3 = Color3.fromRGB(255, 215, 0)
+    TotalGoldText.Font = Enum.Font.GothamBold
+    TotalGoldText.TextSize = 13
+    TotalGoldText.TextXAlignment = Enum.TextXAlignment.Left
+    
+    EarnedGoldText = Instance.new("TextLabel", TrackerFrame)
+    EarnedGoldText.Size = UDim2.new(1, -50, 0, 20)
+    EarnedGoldText.Position = UDim2.new(0, 45, 0, 27)
+    EarnedGoldText.BackgroundTransparency = 1
+    EarnedGoldText.Text = isArabic and "💰 المكتسب: 0" or "💰 Earned: 0"
+    EarnedGoldText.TextColor3 = Color3.fromRGB(100, 255, 100)
+    EarnedGoldText.Font = Enum.Font.GothamBold
+    EarnedGoldText.TextSize = 13
+    EarnedGoldText.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local GoalFrame = Instance.new("Frame", TrackerFrame)
+    GoalFrame.Size = UDim2.new(0, 160, 0, 24)
+    GoalFrame.Position = UDim2.new(0, 45, 0, 50)
+    GoalFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    GoalFrame.BorderSizePixel = 0
+    Instance.new("UICorner", GoalFrame).CornerRadius = UDim.new(0, 6)
+    
+    local GoalIcon = Instance.new("TextLabel", GoalFrame)
+    GoalIcon.Size = UDim2.new(0, 20, 1, 0)
+    GoalIcon.Position = UDim2.new(0, 5, 0, 0)
+    GoalIcon.BackgroundTransparency = 1
+    GoalIcon.Text = "🎯"
+    GoalIcon.TextColor3 = Color3.fromRGB(255, 200, 100)
+    GoalIcon.TextSize = 12
+    
+    GoalInput = Instance.new("TextBox", GoalFrame)
+    GoalInput.Size = UDim2.new(0, 90, 1, 0)
+    GoalInput.Position = UDim2.new(0, 30, 0, 0)
+    GoalInput.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    GoalInput.TextColor3 = Color3.fromRGB(255, 215, 0)
+    GoalInput.PlaceholderText = isArabic and "هدف..." or "Goal..."
+    GoalInput.TextSize = 10
+    GoalInput.Font = Enum.Font.GothamBold
+    GoalInput.Text = ""
+    Instance.new("UICorner", GoalInput).CornerRadius = UDim.new(0, 4)
+    
+    SetGoalBtn = Instance.new("TextButton", GoalFrame)
+    SetGoalBtn.Size = UDim2.new(0, 35, 1, 0)
+    SetGoalBtn.Position = UDim2.new(1, -38, 0, 0)
+    SetGoalBtn.Text = isArabic and "تعيين" or "Set"
+    SetGoalBtn.TextColor3 = Color3.new(1, 1, 1)
+    SetGoalBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+    SetGoalBtn.TextSize = 9
+    SetGoalBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", SetGoalBtn).CornerRadius = UDim.new(0, 4)
+    
+    local ProgressBarBg = Instance.new("Frame", TrackerFrame)
+    ProgressBarBg.Size = UDim2.new(0.65, 0, 0, 4)
+    ProgressBarBg.Position = UDim2.new(0, 45, 0, 78)
+    ProgressBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    ProgressBarBg.BorderSizePixel = 0
+    Instance.new("UICorner", ProgressBarBg).CornerRadius = UDim.new(1, 0)
+    
+    ProgressBarFill = Instance.new("Frame", ProgressBarBg)
+    ProgressBarFill.Size = UDim2.new(0, 0, 1, 0)
+    ProgressBarFill.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+    ProgressBarFill.BorderSizePixel = 0
+    Instance.new("UICorner", ProgressBarFill).CornerRadius = UDim.new(1, 0)
+    
+    SetGoalBtn.MouseButton1Click:Connect(function()
+        local value = tonumber(GoalInput.Text)
+        if value and value > 0 then
+            goldGoal = value
+            goalReached = false
+            GoalInput.Text = ""
+            GoalInput.PlaceholderText = (isArabic and "هدف: " or "Goal: ") .. goldGoal
+            game.StarterGui:SetCore("SendNotification", {Title = isArabic and "🎯 هدف جديد" or "🎯 New Goal", Text = (isArabic and "الهدف: " or "Goal: ") .. goldGoal .. (isArabic and " ذهب" : " gold"), Duration = 3})
+        else
+            game.StarterGui:SetCore("SendNotification", {Title = isArabic and "⚠️ خطأ" or "⚠️ Error", Text = isArabic and "الرجاء إدخال رقم صحيح" or "Please enter a valid number", Duration = 2})
+        end
+    end)
+    
+    task.spawn(function()
+        local initialGold = -1
+        local lastGold = 0
+        while task.wait(0.5) do
+            local goldStat = (Player:FindFirstChild("leaderstats") and Player.leaderstats:FindFirstChild("Gold")) or (Player:FindFirstChild("Data") and Player.Data:FindFirstChild("Gold")) or (Player:FindFirstChild("stats") and Player.stats:FindFirstChild("Gold"))
+            if goldStat then
+                local currentGold = goldStat.Value
+                if initialGold == -1 then
+                    initialGold = currentGold
+                    lastGold = currentGold
+                    TotalGoldText.Text = (isArabic and "🏦 الإجمالي: " or "🏦 Total: ") .. tostring(currentGold)
+                end
+                local earned = currentGold - initialGold
+                TotalGoldText.Text = (isArabic and "🏦 الإجمالي: " or "🏦 Total: ") .. tostring(currentGold)
+                EarnedGoldText.Text = (isArabic and "💰 المكتسب: " or "💰 Earned: ") .. tostring(earned)
+                if goldGoal > 0 and not goalReached and earned >= goldGoal then
+                    goalReached = true
+                    ShowGoalEffect()
+                    EarnedGoldText.Text = (isArabic and "💰 المكتسب: " or "💰 Earned: ") .. tostring(earned) .. " ✅"
+                end
+                if initialGold > 0 then UpdateProgressBar(earned, currentGold) end
+                if currentGold > lastGold then
+                    lastGold = currentGold
+                    TweenService:Create(TrackerStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 255, 255)}):Play()
+                    TweenService:Create(EarnedGoldText, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(255, 215, 0), TextSize = 15}):Play()
+                    task.wait(0.2)
+                    if not goalReached then TweenService:Create(TrackerStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(255, 215, 0)}):Play() end
+                    TweenService:Create(EarnedGoldText, TweenInfo.new(0.3), {TextColor3 = goalReached and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 255, 100), TextSize = 13}):Play()
+                end
+            end
+        end
+    end)
+end
+
+-- ========== الدرة ==========
 local ToggleButton = Instance.new("ImageButton", GUI)
 ToggleButton.Size = UDim2.new(0, 50, 0, 50)
 ToggleButton.Position = UDim2.new(0, 10, 0, 100)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 ToggleButton.BackgroundTransparency = 0.2
 ToggleButton.Image = YourImage
-ToggleButton.ScaleType = Enum.ScaleType.Stretch
 Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", ToggleButton).Color = Color3.fromRGB(255, 50, 50)
 Instance.new("UIStroke", ToggleButton).Thickness = 2
 
--- جعل الدرة قابلة للسحب
 local dragging = false
-local dragStart
-local startPos
-
+local dragStart, startPos
 ToggleButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
@@ -91,13 +274,7 @@ ToggleButton.InputBegan:Connect(function(input)
         startPos = ToggleButton.Position
     end
 end)
-
-ToggleButton.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-
+ToggleButton.InputEnded:Connect(function() dragging = false end)
 UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - dragStart
@@ -105,26 +282,26 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- ========== أنميشين قبل القائمة ==========
+-- ========== أنميشين ==========
 local AnimFrame = Instance.new("Frame", GUI)
-AnimFrame.Size = UDim2.new(0, 240, 0, 100)
-AnimFrame.Position = UDim2.new(0.5, -120, 0.5, -50)
+AnimFrame.Size = UDim2.new(0, 250, 0, 110)
+AnimFrame.Position = UDim2.new(0.5, -125, 0.5, -55)
 AnimFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 AnimFrame.BackgroundTransparency = 0
-Instance.new("UICorner", AnimFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", AnimFrame).CornerRadius = UDim.new(0, 15)
 Instance.new("UIStroke", AnimFrame).Color = Color3.fromRGB(255, 50, 50)
 Instance.new("UIStroke", AnimFrame).Thickness = 2
 
 local AnimImage = Instance.new("ImageLabel", AnimFrame)
 AnimImage.Size = UDim2.new(0, 70, 0, 70)
-AnimImage.Position = UDim2.new(0, -80, 0, 10)
+AnimImage.Position = UDim2.new(0, -80, 0, 15)
 AnimImage.BackgroundTransparency = 1
 AnimImage.Image = YourImage
 Instance.new("UICorner", AnimImage).CornerRadius = UDim.new(1, 0)
 
 local AnimText = Instance.new("TextLabel", AnimFrame)
 AnimText.Size = UDim2.new(1, 0, 0, 25)
-AnimText.Position = UDim2.new(0, 0, 0, 70)
+AnimText.Position = UDim2.new(0, 0, 0, 80)
 AnimText.BackgroundTransparency = 1
 AnimText.Text = "AYF TEAM here"
 AnimText.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -132,45 +309,41 @@ AnimText.TextSize = 14
 AnimText.Font = Enum.Font.GothamBold
 AnimText.TextTransparency = 1
 
--- حركة الصورة
-local function StartAnimation()
-    local targetPos = UDim2.new(0.5, -35, 0, 10)
-    local tween = TweenService:Create(AnimImage, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {Position = targetPos})
-    tween:Play()
-    
-    tween.Completed:Connect(function()
-        TweenService:Create(AnimText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-        task.wait(1.5)
-        TweenService:Create(AnimFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-        task.wait(0.5)
-        AnimFrame.Visible = false
-        CreateMainUI()
-    end)
-end
+local targetPos = UDim2.new(0.5, -35, 0, 15)
+local tween = TweenService:Create(AnimImage, TweenInfo.new(1.2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Position = targetPos})
+tween:Play()
+tween.Completed:Connect(function()
+    TweenService:Create(AnimText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+    task.wait(1.5)
+    TweenService:Create(AnimFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+    task.wait(0.5)
+    AnimFrame.Visible = false
+    CreateTracker()
+    TrackerFrame.Visible = true
+    CreateMainUI()
+end)
 
 -- ========== القائمة الرئيسية ==========
-local Main = nil -- نعرفها كمتغير عام
-
+local Main = nil
 function CreateMainUI()
     Main = Instance.new("Frame", GUI)
-    Main.Size = UDim2.new(0, 240, 0, 420)
-    Main.Position = UDim2.new(0.5, -120, 0.5, -210)
+    Main.Size = UDim2.new(0, 250, 0, 450)
+    Main.Position = UDim2.new(0.5, -125, 0.5, -225)
     Main.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
     Main.BorderSizePixel = 0
     Main.Draggable = true
     Main.Active = true
     Main.Visible = true
-    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
     Instance.new("UIStroke", Main).Color = Color3.fromRGB(255, 30, 30)
     Instance.new("UIStroke", Main).Thickness = 2
     
-    -- شريط العنوان
     local TitleBar = Instance.new("Frame", Main)
     TitleBar.Size = UDim2.new(1, 0, 0, 35)
     TitleBar.Position = UDim2.new(0, 0, 0, 0)
     TitleBar.BackgroundColor3 = Color3.fromRGB(255, 20, 20)
     TitleBar.BackgroundTransparency = 0.85
-    Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+    Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
     
     local TitleText = Instance.new("TextLabel", TitleBar)
     TitleText.Size = UDim2.new(1, -60, 1, 0)
@@ -187,13 +360,11 @@ function CreateMainUI()
     OwnerImg.Position = UDim2.new(0, 6, 0, 5)
     OwnerImg.BackgroundTransparency = 1
     OwnerImg.Image = YourImage
-    OwnerImg.ScaleType = Enum.ScaleType.Stretch
     Instance.new("UICorner", OwnerImg).CornerRadius = UDim.new(1, 0)
     
-    -- زر الترجمة
     local TranslateBtn = Instance.new("TextButton", TitleBar)
-    TranslateBtn.Size = UDim2.new(0, 50, 0, 24)
-    TranslateBtn.Position = UDim2.new(1, -80, 0, 5)
+    TranslateBtn.Size = UDim2.new(0, 55, 0, 24)
+    TranslateBtn.Position = UDim2.new(1, -85, 0, 5)
     TranslateBtn.Text = "🇺🇸 English"
     TranslateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     TranslateBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0, 0.5)
@@ -201,7 +372,6 @@ function CreateMainUI()
     TranslateBtn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", TranslateBtn).CornerRadius = UDim.new(1, 0)
     
-    -- زر الإغلاق (X) - يخفي القائمة فقط
     local CloseBtn = Instance.new("TextButton", TitleBar)
     CloseBtn.Size = UDim2.new(0, 24, 0, 24)
     CloseBtn.Position = UDim2.new(1, -26, 0, 5)
@@ -212,13 +382,10 @@ function CreateMainUI()
     CloseBtn.Font = Enum.Font.GothamBold
     Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(1, 0)
     
-    -- زر الإغلاق يخفي القائمة فقط (ما يغلق السكربت)
     CloseBtn.MouseButton1Click:Connect(function()
         Main.Visible = false
         ToggleButton.Visible = true
     end)
-    
-    -- الدرة تفتح القائمة
     ToggleButton.MouseButton1Click:Connect(function()
         Main.Visible = true
         ToggleButton.Visible = false
@@ -250,9 +417,31 @@ function CreateMainUI()
     StatusBar.Font = Enum.Font.Gotham
     StatusBar.TextXAlignment = Enum.TextXAlignment.Left
     
+    -- معلومة المراحل
+    local InfoFrame = Instance.new("Frame", Main)
+    InfoFrame.Size = UDim2.new(0, 220, 0, 32)
+    InfoFrame.Position = UDim2.new(0.5, -110, 0, 92)
+    InfoFrame.BackgroundColor3 = Color3.fromRGB(30, 20, 20)
+    InfoFrame.BackgroundTransparency = 0.3
+    InfoFrame.BorderSizePixel = 0
+    Instance.new("UICorner", InfoFrame).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", InfoFrame).Color = Color3.fromRGB(255, 100, 50)
+    Instance.new("UIStroke", InfoFrame).Thickness = 1
+    
+    local InfoText = Instance.new("TextLabel", InfoFrame)
+    InfoText.Size = UDim2.new(1, -10, 1, 0)
+    InfoText.Position = UDim2.new(0, 5, 0, 0)
+    InfoText.BackgroundTransparency = 1
+    InfoText.Text = "ℹ️ إذا كان السيرفر جديد والمراحل تتحمل، ما يحسب الذهب مؤقتاً"
+    InfoText.TextColor3 = Color3.fromRGB(255, 200, 150)
+    InfoText.TextSize = 9
+    InfoText.Font = Enum.Font.Gotham
+    InfoText.TextWrapped = true
+    InfoText.TextXAlignment = Enum.TextXAlignment.Center
+    
     local FarmBtn = Instance.new("TextButton", Main)
-    FarmBtn.Size = UDim2.new(0, 200, 0, 35)
-    FarmBtn.Position = UDim2.new(0.5, -100, 0, 92)
+    FarmBtn.Size = UDim2.new(0, 210, 0, 35)
+    FarmBtn.Position = UDim2.new(0.5, -105, 0, 132)
     FarmBtn.Text = "▶ تشغيل الفارم"
     FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
     FarmBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -272,8 +461,8 @@ function CreateMainUI()
     
     -- لوحة المشاكل
     local ReportPanel = Instance.new("Frame", Main)
-    ReportPanel.Size = UDim2.new(0, 210, 0, 110)
-    ReportPanel.Position = UDim2.new(0.5, -105, 0, 135)
+    ReportPanel.Size = UDim2.new(0, 220, 0, 110)
+    ReportPanel.Position = UDim2.new(0.5, -110, 0, 178)
     ReportPanel.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
     ReportPanel.BorderSizePixel = 0
     Instance.new("UICorner", ReportPanel).CornerRadius = UDim.new(0, 8)
@@ -281,21 +470,20 @@ function CreateMainUI()
     Instance.new("UIStroke", ReportPanel).Thickness = 1
     
     local ReportTitle = Instance.new("TextLabel", ReportPanel)
-    ReportTitle.Size = UDim2.new(1, 0, 0, 16)
+    ReportTitle.Size = UDim2.new(1, 0, 0, 18)
     ReportTitle.Position = UDim2.new(0, 0, 0, 3)
     ReportTitle.BackgroundTransparency = 1
     ReportTitle.Text = "📩 إبلاغ عن مشكلة"
     ReportTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
-    ReportTitle.TextSize = 10
+    ReportTitle.TextSize = 11
     ReportTitle.Font = Enum.Font.GothamBold
     
     local ProblemBox = Instance.new("TextBox", ReportPanel)
-    ProblemBox.Size = UDim2.new(0, 190, 0, 50)
-    ProblemBox.Position = UDim2.new(0.5, -95, 0, 22)
+    ProblemBox.Size = UDim2.new(0, 200, 0, 50)
+    ProblemBox.Position = UDim2.new(0.5, -100, 0, 24)
     ProblemBox.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     ProblemBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     ProblemBox.PlaceholderText = "اكتب مشكلتك هنا..."
-    ProblemBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
     ProblemBox.TextSize = 10
     ProblemBox.Font = Enum.Font.Gotham
     ProblemBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -303,46 +491,53 @@ function CreateMainUI()
     ProblemBox.TextWrapped = true
     ProblemBox.Text = ""
     ProblemBox.BorderSizePixel = 0
-    Instance.new("UICorner", ProblemBox).CornerRadius = UDim.new(0, 5)
+    Instance.new("UICorner", ProblemBox).CornerRadius = UDim.new(0, 6)
     
     local SendBtn = Instance.new("TextButton", ReportPanel)
-    SendBtn.Size = UDim2.new(0, 190, 0, 25)
-    SendBtn.Position = UDim2.new(0.5, -95, 0, 78)
+    SendBtn.Size = UDim2.new(0, 200, 0, 26)
+    SendBtn.Position = UDim2.new(0.5, -100, 0, 78)
     SendBtn.Text = "📤 إرسال المشكلة"
     SendBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
     SendBtn.TextColor3 = Color3.new(1, 1, 1)
     SendBtn.TextSize = 11
     SendBtn.Font = Enum.Font.GothamBold
-    Instance.new("UICorner", SendBtn).CornerRadius = UDim.new(0, 5)
+    Instance.new("UICorner", SendBtn).CornerRadius = UDim.new(0, 6)
     
     SendBtn.MouseButton1Click:Connect(function()
         local problem = ProblemBox.Text
-        if problem == "" then return end
-        sendWebhook(ProblemWebhook, "📩 مشكلة جديدة", problem, 16711680)
+        if problem == "" then
+            game.StarterGui:SetCore("SendNotification", {Title = "⚠️ تنبيه", Text = "الرجاء كتابة المشكلة أولاً!", Duration = 2})
+            return
+        end
+        if containsBadWord(problem) then
+            game.StarterGui:SetCore("SendNotification", {Title = "🚫 ممنوع", Text = "الرجاء عدم استخدام كلمات بذيئة!", Duration = 3})
+            ProblemBox.Text = ""
+            return
+        end
+        sendWebhook(ProblemWebhook, "📩 مشكلة جديدة", "**اللاعب:** " .. Player.Name .. " (`" .. Player.UserId .. "`)\n**اللعبة:** " .. gameName .. "\n**المشكلة:**\n```\n" .. problem .. "\n```", 16711680, nil)
         ProblemBox.Text = ""
-        game.StarterGui:SetCore("SendNotification", {Title = "✅ تم", Text = "تم الإرسال!", Duration = 2})
+        game.StarterGui:SetCore("SendNotification", {Title = "✅ تم", Text = "تم إرسال مشكلتك!", Duration = 2})
     end)
     
     -- رسالة المطور
     local DevMessageFrame = Instance.new("Frame", Main)
-    DevMessageFrame.Size = UDim2.new(0, 220, 0, 55)
-    DevMessageFrame.Position = UDim2.new(0.5, -110, 0, 255)
+    DevMessageFrame.Size = UDim2.new(0, 230, 0, 55)
+    DevMessageFrame.Position = UDim2.new(0.5, -115, 0, 298)
     DevMessageFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     DevMessageFrame.BorderSizePixel = 0
-    Instance.new("UICorner", DevMessageFrame).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", DevMessageFrame).CornerRadius = UDim.new(0, 8)
     Instance.new("UIStroke", DevMessageFrame).Color = Color3.fromRGB(255, 100, 100)
     Instance.new("UIStroke", DevMessageFrame).Thickness = 0.5
     
     local DevIcon = Instance.new("ImageLabel", DevMessageFrame)
     DevIcon.Size = UDim2.new(0, 18, 0, 18)
-    DevIcon.Position = UDim2.new(0, 6, 0, 5)
+    DevIcon.Position = UDim2.new(0, 8, 0, 6)
     DevIcon.BackgroundTransparency = 1
     DevIcon.Image = "rbxassetid://6023426918"
-    DevIcon.ScaleType = Enum.ScaleType.Stretch
     
     local DevMessage = Instance.new("TextLabel", DevMessageFrame)
-    DevMessage.Size = UDim2.new(1, -30, 1, 0)
-    DevMessage.Position = UDim2.new(0, 28, 0, 0)
+    DevMessage.Size = UDim2.new(1, -35, 1, 0)
+    DevMessage.Position = UDim2.new(0, 30, 0, 0)
     DevMessage.BackgroundTransparency = 1
     DevMessage.Text = "🔷 Welcome to AMT UI\n\nThank you for using AMT UI.\nEnjoy the script and have fun!\n\nMade with ❤️ by AMT"
     DevMessage.TextColor3 = Color3.fromRGB(230, 230, 250)
@@ -352,20 +547,16 @@ function CreateMainUI()
     DevMessage.TextYAlignment = Enum.TextYAlignment.Top
     DevMessage.TextWrapped = true
     
-    -- سجل
     local LogText = Instance.new("TextLabel", Main)
     LogText.Size = UDim2.new(1, -20, 0, 22)
-    LogText.Position = UDim2.new(0, 10, 0, 390)
+    LogText.Position = UDim2.new(0, 10, 0, 420)
     LogText.BackgroundTransparency = 1
-    LogText.Text = "AMT HUB v2.0 | جاهز"
+    LogText.Text = "AMT HUB v4.0 | جاهز"
     LogText.TextColor3 = Color3.fromRGB(255, 200, 200)
     LogText.TextSize = 9
     LogText.Font = Enum.Font.Code
     
-    function updateLog(msg) LogText.Text = msg end
-    
-    -- نظام الترجمة
-    local isArabic = true
+    local function updateLog(msg) LogText.Text = msg end
     
     local function TranslateUI()
         if isArabic then
@@ -375,9 +566,12 @@ function CreateMainUI()
             ReportTitle.Text = "📩 إبلاغ عن مشكلة"
             ProblemBox.PlaceholderText = "اكتب مشكلتك هنا..."
             SendBtn.Text = "📤 إرسال المشكلة"
+            InfoText.Text = "ℹ️ إذا كان السيرفر جديد والمراحل تتحمل، ما يحسب الذهب مؤقتاً"
+            if GoalInput then GoalInput.PlaceholderText = "هدف..." end
+            if SetGoalBtn then SetGoalBtn.Text = "تعيين" end
             DevMessage.Text = "🔷 مرحباً بك في AMT UI\n\nشكراً لاستخدامك AMT UI.\nاستمتع بالسكربت واتسلى!\n\nصنع بـ ❤️ بواسطة AMT"
             StatusBar.Text = getgenv().Farming and StatusBar.Text or "⚡ جاهز للانطلاق"
-            updateLog("⚡ AMT HUB v2.0 | جاهز")
+            updateLog("⚡ AMT HUB v4.0 | جاهز")
         else
             TranslateBtn.Text = "🇵🇸 عربي"
             AMT_Text.Text = "💬 AMT: My script, thank you!"
@@ -385,9 +579,12 @@ function CreateMainUI()
             ReportTitle.Text = "📩 Report a Problem"
             ProblemBox.PlaceholderText = "Write your problem here..."
             SendBtn.Text = "📤 Send Report"
+            InfoText.Text = "ℹ️ If the server is new and stages are loading, gold won't be counted temporarily"
+            if GoalInput then GoalInput.PlaceholderText = "Goal..." end
+            if SetGoalBtn then SetGoalBtn.Text = "Set" end
             DevMessage.Text = "🔷 Welcome to AMT UI\n\nThank you for using AMT UI.\nEnjoy the script and have fun!\n\nMade with ❤️ by AMT"
             StatusBar.Text = getgenv().Farming and StatusBar.Text or "⚡ Ready to go"
-            updateLog("⚡ AMT HUB v2.0 | Ready")
+            updateLog("⚡ AMT HUB v4.0 | Ready")
         end
     end
     
@@ -423,19 +620,18 @@ function CreateMainUI()
     task.spawn(function()
         while task.wait(0.5) do
             if getgenv().Farming then
+                if not stagesReady then
+                    StatusBar.Text = isArabic and "⏳ انتظار تحميل المراحل..." or "⏳ Waiting for stages to load..."
+                    task.wait(2)
+                    continue
+                end
                 local char = Player.Character
                 if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
                 local hrp = char.HumanoidRootPart
-                
                 for i = 1, 10 do
                     if not getgenv().Farming then break end
                     StatusBar.Text = "📍 " .. i .. "/10"
-                    if isArabic then
-                        updateLog("🚀 مرحلة " .. i)
-                    else
-                        updateLog("🚀 Stage " .. i)
-                    end
-                    
+                    updateLog((isArabic and "🚀 مرحلة " or "🚀 Stage ") .. i)
                     local stage = workspace.BoatStages.NormalStages:FindFirstChild("CaveStage" .. i)
                     if stage and stage:FindFirstChild("DarknessPart") then
                         createPlatform(stage.DarknessPart.Position)
@@ -443,34 +639,17 @@ function CreateMainUI()
                     end
                     task.wait(2.5)
                 end
-                
                 if not getgenv().Farming then break end
-                
-                if isArabic then
-                    StatusBar.Text = "🏆 الكنز"
-                    updateLog("💛 فتح الكنز...")
-                else
-                    StatusBar.Text = "🏆 Treasure"
-                    updateLog("💛 Opening chest...")
-                end
-                
+                StatusBar.Text = isArabic and "🏆 الكنز" or "🏆 Treasure"
+                updateLog(isArabic and "💛 فتح الكنز..." or "💛 Opening chest...")
                 local cp = Vector3.new(-51, -360, 9498)
                 createPlatform(cp)
                 hrp.CFrame = CFrame.new(cp + Vector3.new(0, 3, 0))
                 task.wait(0.5)
                 openChestNOW()
-                
-                if isArabic then
-                    updateLog("🎉 تم فتح الكنز!")
-                    game.StarterGui:SetCore("SendNotification", {Title = "🏆 AMT", Text = "تم فتح الكنز!", Duration = 2})
-                else
-                    updateLog("🎉 Chest opened!")
-                    game.StarterGui:SetCore("SendNotification", {Title = "🏆 AMT", Text = "Chest opened!", Duration = 2})
-                end
-                
+                updateLog(isArabic and "🎉 تم فتح الكنز!" or "🎉 Chest opened!")
                 task.wait(12)
                 if not getgenv().Farming then break end
-                
                 if char:FindFirstChild("Humanoid") then char.Humanoid.Health = 0 end
                 task.wait(6)
             end
@@ -483,27 +662,17 @@ function CreateMainUI()
             FarmBtn.Text = isArabic and "⏹ إيقاف" or "⏹ Stop"
             FarmBtn.BackgroundColor3 = Color3.fromRGB(150, 10, 10)
             updateLog(isArabic and "🔥 اشتغلنا!" or "🔥 Farming started!")
-            if isArabic then
-                StatusBar.Text = "⚡ الفارم شغال..."
-            else
-                StatusBar.Text = "⚡ Farming..."
-            end
+            StatusBar.Text = isArabic and "⚡ الفارم شغال..." or "⚡ Farming..."
         else
             FarmBtn.Text = isArabic and "▶ تشغيل الفارم" or "▶ Start Farm"
             FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
             updateLog(isArabic and "💤 توقف" or "💤 Stopped")
-            if isArabic then
-                StatusBar.Text = "⚡ جاهز للانطلاق"
-            else
-                StatusBar.Text = "⚡ Ready to go"
-            end
+            StatusBar.Text = isArabic and "⚡ جاهز للانطلاق" or "⚡ Ready to go"
         end
     end)
     
     game.StarterGui:SetCore("SendNotification", {Title = "🔥 AMT HUB", Text = "تم التحميل", Duration = 2})
-    updateLog("⚡ AMT HUB v2.0 | جاهز")
+    updateLog("⚡ AMT HUB v4.0 | جاهز")
 end
 
--- بدء التشغيل
-StartAnimation()
 ToggleButton.Visible = true
