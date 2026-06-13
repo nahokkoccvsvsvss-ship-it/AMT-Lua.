@@ -1,7 +1,3 @@
--- ==========================================================
---  AMT HUB | نسخة ناعمة (زوايا مستديرة) + فحص المراحل المستمر
--- ==========================================================
-
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -21,8 +17,6 @@ local WebhookImage = "https://cdn.discordapp.com/attachments/1507116033515847856
 
 -- صورتك الشخصية في السكربت
 local YourImage = "rbxthumb://type=Asset&id=81610241171872&w=150&h=150"
-
-local isArabic = true
 
 -- ========== فلتر الكلمات البذيئة ==========
 local badWords = {
@@ -127,7 +121,34 @@ local GUI = Instance.new("ScreenGui", CoreGui)
 GUI.Name = "AMT_UI"
 GUI.ResetOnSpawn = false
 
--- ========== متتبع الذهب ==========
+-- ========== فحص المراحل المستمر ==========
+local stagesReady = false
+
+task.spawn(function()
+    while true do
+        local allExist = true
+        local stagesFolder = workspace:FindFirstChild("BoatStages")
+        if not stagesFolder then allExist = false end
+        
+        if allExist then
+            local normalStages = stagesFolder:FindFirstChild("NormalStages")
+            if not normalStages then allExist = false end
+            if allExist then
+                for j = 1, 10 do
+                    if not normalStages:FindFirstChild("CaveStage" .. j) then
+                        allExist = false
+                        break
+                    end
+                end
+            end
+        end
+        
+        stagesReady = allExist
+        task.wait(3)
+    end
+end)
+
+-- ========== متتبع الذهب مع هدف ذكي ==========
 local TrackerFrame = Instance.new("Frame", GUI)
 TrackerFrame.Size = UDim2.new(0, 220, 0, 90)
 TrackerFrame.Position = UDim2.new(0.5, -110, 0, 15)
@@ -244,12 +265,12 @@ local function ShowGoalEffect()
     TweenService:Create(EarnedGoldText, TweenInfo.new(0.3), {TextColor3 = originalColor, TextSize = 13}):Play()
     
     game.StarterGui:SetCore("SendNotification", {
-        Title = isArabic and "🎯 تم تحقيق الهدف!" or "🎯 Goal Achieved!",
-        Text = (isArabic and "تم جمع " or "Collected ") .. goldGoal .. (isArabic and " ذهب" : " gold"),
+        Title = "🎯 تم تحقيق الهدف!",
+        Text = "تم جمع " .. goldGoal .. " ذهب",
         Duration = 4
     })
     
-    sendWebhook(ProblemWebhook, isArabic and "🎯 تم تحقيق هدف الذهب" or "🎯 Gold Goal Achieved",
+    sendWebhook(ProblemWebhook, "🎯 تم تحقيق هدف الذهب",
         "**اللاعب:** " .. Player.Name .. " (`" .. Player.UserId .. "`)\n" ..
         "**الهدف:** " .. goldGoal .. " ذهب\n" ..
         "**اللعبة:** " .. gameName,
@@ -272,17 +293,17 @@ task.spawn(function()
             if initialGold == -1 then
                 initialGold = currentGold
                 lastGold = currentGold
-                TotalGoldText.Text = (isArabic and "🏦 الإجمالي: " or "🏦 Total: ") .. tostring(currentGold)
+                TotalGoldText.Text = "🏦 الإجمالي: " .. tostring(currentGold)
             end
             
             local earned = currentGold - initialGold
-            TotalGoldText.Text = (isArabic and "🏦 الإجمالي: " or "🏦 Total: ") .. tostring(currentGold)
-            EarnedGoldText.Text = (isArabic and "💰 المكتسب: " or "💰 Earned: ") .. tostring(earned)
+            TotalGoldText.Text = "🏦 الإجمالي: " .. tostring(currentGold)
+            EarnedGoldText.Text = "💰 المكتسب: " .. tostring(earned)
             
             if goldGoal > 0 and not goalReached and earned >= goldGoal then
                 goalReached = true
                 ShowGoalEffect()
-                EarnedGoldText.Text = (isArabic and "💰 المكتسب: " or "💰 Earned: ") .. tostring(earned) .. " ✅"
+                EarnedGoldText.Text = "💰 المكتسب: " .. tostring(earned) .. " ✅"
             end
             
             if initialGold > 0 then
@@ -309,10 +330,10 @@ SetGoalBtn.MouseButton1Click:Connect(function()
         goldGoal = value
         goalReached = false
         GoalInput.Text = ""
-        GoalInput.PlaceholderText = (isArabic and "هدف: " or "Goal: ") .. goldGoal
-        game.StarterGui:SetCore("SendNotification", {Title = isArabic and "🎯 هدف جديد" or "🎯 New Goal", Text = (isArabic and "الهدف: " or "Goal: ") .. goldGoal .. (isArabic and " ذهب" : " gold"), Duration = 3})
+        GoalInput.PlaceholderText = "هدف: " .. goldGoal
+        game.StarterGui:SetCore("SendNotification", {Title = "🎯 هدف جديد", Text = "الهدف: " .. goldGoal .. " ذهب", Duration = 3})
     else
-        game.StarterGui:SetCore("SendNotification", {Title = isArabic and "⚠️ خطأ" or "⚠️ Error", Text = isArabic and "الرجاء إدخال رقم صحيح" or "Please enter a valid number", Duration = 2})
+        game.StarterGui:SetCore("SendNotification", {Title = "⚠️ خطأ", Text = "الرجاء إدخال رقم صحيح", Duration = 2})
     end
 end)
 
@@ -393,21 +414,92 @@ end)
 
 -- ========== القائمة الرئيسية ==========
 local Main = nil
-local FarmBtn = nil
-local StatusBar = nil
-local LogText = nil
-local TranslateBtn = nil
-local AMT_Text = nil
-local ReportTitle = nil
-local ProblemBox = nil
-local SendBtn = nil
-local InfoText = nil
-local DevMessage = nil
+local isArabic = true
+local farmingCoroutine = nil
 
 local function updateLog(msg)
-    if LogText then
-        LogText.Text = msg
+    if Main and Main:FindFirstChild("LogText") then
+        Main.LogText.Text = msg
     end
+end
+
+local function createPlatform(pos)
+    local p = Instance.new("Part", workspace)
+    p.Size = Vector3.new(12, 0.5, 12)
+    p.Position = pos - Vector3.new(0, 4.5, 0)
+    p.Anchored = true
+    p.CanCollide = true
+    p.BrickColor = BrickColor.new("Bright red")
+    p.Material = Enum.Material.Neon
+    p.Transparency = 0.4
+    game:GetService("Debris"):AddItem(p, 90)
+end
+
+local function openChestNOW()
+    local target = CFrame.new(-51, -360, 9498)
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Position and (obj.Position - target.Position).Magnitude < 50 then
+            if obj:FindFirstChild("ClickDetector") then pcall(function() fireclickdetector(obj.ClickDetector) end) end
+            if obj:FindFirstChild("ProximityPrompt") then pcall(function() fireproximityprompt(obj.ProximityPrompt) end) end
+        end
+    end
+end
+
+-- ==== حلقة الفارم المصححة ====
+local function StartFarmingLoop()
+    if farmingCoroutine and coroutine.status(farmingCoroutine) ~= "dead" then return end
+
+    farmingCoroutine = task.spawn(function()
+        while true do
+            while not getgenv().Farming do task.wait(0.2) end
+
+            while not stagesReady do
+                if isArabic then updateLog("⏳ انتظار تحميل المراحل...") else updateLog("⏳ Waiting for stages...") end
+                task.wait(1)
+                if not getgenv().Farming then break end
+            end
+            if not getgenv().Farming then continue end
+
+            local char = Player.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then
+                if isArabic then updateLog("⚠️ الشخصية غير موجودة") else updateLog("⚠️ Character missing") end
+                task.wait(2)
+                continue
+            end
+            local hrp = char.HumanoidRootPart
+
+            for i = 1, 10 do
+                if not getgenv().Farming then break end
+                if Main then Main.StatusBar.Text = "📍 "..i.."/10" end
+                updateLog(isArabic and "🚀 مرحلة "..i or "🚀 Stage "..i)
+
+                local stage = workspace.BoatStages.NormalStages:FindFirstChild("CaveStage"..i)
+                if stage and stage:FindFirstChild("DarknessPart") then
+                    createPlatform(stage.DarknessPart.Position)
+                    hrp.CFrame = stage.DarknessPart.CFrame + Vector3.new(0,5,0)
+                end
+                task.wait(2.5)
+            end
+            if not getgenv().Farming then continue end
+
+            if Main then
+                Main.StatusBar.Text = isArabic and "🏆 الكنز" or "🏆 Treasure"
+            end
+            updateLog(isArabic and "💛 فتح الكنز..." or "💛 Opening chest...")
+            local cp = Vector3.new(-51, -360, 9498)
+            createPlatform(cp)
+            hrp.CFrame = CFrame.new(cp + Vector3.new(0,3,0))
+            task.wait(0.5)
+            openChestNOW()
+            updateLog(isArabic and "🎉 تم فتح الكنز!" or "🎉 Chest opened!")
+
+            task.wait(12)
+            if not getgenv().Farming then continue end
+
+            if char:FindFirstChild("Humanoid") then char.Humanoid.Health = 0 end
+            task.wait(6)
+        end
+    end)
 end
 
 function CreateMainUI()
@@ -450,7 +542,7 @@ function CreateMainUI()
     Instance.new("UICorner", OwnerImg).CornerRadius = UDim.new(1, 0)
     
     -- زر الترجمة
-    TranslateBtn = Instance.new("TextButton", TitleBar)
+    local TranslateBtn = Instance.new("TextButton", TitleBar)
     TranslateBtn.Size = UDim2.new(0, 50, 0, 24)
     TranslateBtn.Position = UDim2.new(1, -80, 0, 5)
     TranslateBtn.Text = "🇺🇸 English"
@@ -487,7 +579,7 @@ function CreateMainUI()
     Line.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
     Line.BackgroundTransparency = 0.5
     
-    AMT_Text = Instance.new("TextLabel", Main)
+    local AMT_Text = Instance.new("TextLabel", Main)
     AMT_Text.Size = UDim2.new(1, -20, 0, 25)
     AMT_Text.Position = UDim2.new(0, 10, 0, 43)
     AMT_Text.BackgroundTransparency = 1
@@ -497,7 +589,8 @@ function CreateMainUI()
     AMT_Text.Font = Enum.Font.Gotham
     AMT_Text.TextXAlignment = Enum.TextXAlignment.Left
     
-    StatusBar = Instance.new("TextLabel", Main)
+    local StatusBar = Instance.new("TextLabel", Main)
+    StatusBar.Name = "StatusBar"
     StatusBar.Size = UDim2.new(1, -20, 0, 18)
     StatusBar.Position = UDim2.new(0, 10, 0, 70)
     StatusBar.BackgroundTransparency = 1
@@ -518,7 +611,7 @@ function CreateMainUI()
     Instance.new("UIStroke", InfoFrame).Color = Color3.fromRGB(255, 100, 50)
     Instance.new("UIStroke", InfoFrame).Thickness = 1
     
-    InfoText = Instance.new("TextLabel", InfoFrame)
+    local InfoText = Instance.new("TextLabel", InfoFrame)
     InfoText.Size = UDim2.new(1, -10, 1, 0)
     InfoText.Position = UDim2.new(0, 5, 0, 0)
     InfoText.BackgroundTransparency = 1
@@ -529,7 +622,7 @@ function CreateMainUI()
     InfoText.TextWrapped = true
     InfoText.TextXAlignment = Enum.TextXAlignment.Center
     
-    FarmBtn = Instance.new("TextButton", Main)
+    local FarmBtn = Instance.new("TextButton", Main)
     FarmBtn.Size = UDim2.new(0, 200, 0, 35)
     FarmBtn.Position = UDim2.new(0.5, -100, 0, 128)
     FarmBtn.Text = "▶ تشغيل الفارم"
@@ -559,7 +652,7 @@ function CreateMainUI()
     Instance.new("UIStroke", ReportPanel).Color = Color3.fromRGB(255, 60, 60)
     Instance.new("UIStroke", ReportPanel).Thickness = 1
     
-    ReportTitle = Instance.new("TextLabel", ReportPanel)
+    local ReportTitle = Instance.new("TextLabel", ReportPanel)
     ReportTitle.Size = UDim2.new(1, 0, 0, 16)
     ReportTitle.Position = UDim2.new(0, 0, 0, 3)
     ReportTitle.BackgroundTransparency = 1
@@ -568,7 +661,7 @@ function CreateMainUI()
     ReportTitle.TextSize = 10
     ReportTitle.Font = Enum.Font.GothamBold
     
-    ProblemBox = Instance.new("TextBox", ReportPanel)
+    local ProblemBox = Instance.new("TextBox", ReportPanel)
     ProblemBox.Size = UDim2.new(0, 190, 0, 50)
     ProblemBox.Position = UDim2.new(0.5, -95, 0, 22)
     ProblemBox.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
@@ -584,7 +677,7 @@ function CreateMainUI()
     ProblemBox.BorderSizePixel = 0
     Instance.new("UICorner", ProblemBox).CornerRadius = UDim.new(0, 5)
     
-    SendBtn = Instance.new("TextButton", ReportPanel)
+    local SendBtn = Instance.new("TextButton", ReportPanel)
     SendBtn.Size = UDim2.new(0, 190, 0, 25)
     SendBtn.Position = UDim2.new(0.5, -95, 0, 78)
     SendBtn.Text = "📤 إرسال المشكلة"
@@ -633,7 +726,7 @@ function CreateMainUI()
     DevIcon.Image = "rbxassetid://6023426918"
     DevIcon.ScaleType = Enum.ScaleType.Stretch
     
-    DevMessage = Instance.new("TextLabel", DevMessageFrame)
+    local DevMessage = Instance.new("TextLabel", DevMessageFrame)
     DevMessage.Size = UDim2.new(1, -30, 1, 0)
     DevMessage.Position = UDim2.new(0, 28, 0, 0)
     DevMessage.BackgroundTransparency = 1
@@ -646,7 +739,8 @@ function CreateMainUI()
     DevMessage.TextWrapped = true
     
     -- سجل
-    LogText = Instance.new("TextLabel", Main)
+    local LogText = Instance.new("TextLabel", Main)
+    LogText.Name = "LogText"
     LogText.Size = UDim2.new(1, -20, 0, 22)
     LogText.Position = UDim2.new(0, 10, 0, 410)
     LogText.BackgroundTransparency = 1
@@ -654,7 +748,6 @@ function CreateMainUI()
     LogText.TextColor3 = Color3.fromRGB(255, 200, 200)
     LogText.TextSize = 9
     LogText.Font = Enum.Font.Code
-    LogText.Name = "LogText"
     
     local function TranslateUI()
         if isArabic then
@@ -692,139 +785,24 @@ function CreateMainUI()
     end)
     
     getgenv().Farming = false
-    
-    local function createPlatform(pos)
-        local p = Instance.new("Part", workspace)
-        p.Size = Vector3.new(12, 0.5, 12)
-        p.Position = pos - Vector3.new(0, 4.5, 0)
-        p.Anchored = true
-        p.CanCollide = true
-        p.BrickColor = BrickColor.new("Bright red")
-        p.Material = Enum.Material.Neon
-        p.Transparency = 0.4
-        game:GetService("Debris"):AddItem(p, 90)
-    end
-    
-    local function openChestNOW()
-        local target = CFrame.new(-51, -360, 9498)
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and obj.Position and (obj.Position - target.Position).Magnitude < 50 then
-                if obj:FindFirstChild("ClickDetector") then pcall(function() fireclickdetector(obj.ClickDetector) end) end
-                if obj:FindFirstChild("ProximityPrompt") then pcall(function() fireproximityprompt(obj.ProximityPrompt) end) end
-            end
-        end
-    end
-    
-    -- حلقة الفارم الرئيسية (تفحص المراحل باستمرار)
-    task.spawn(function()
-        while true do
-            if getgenv().Farming then
-                -- نفحص المراحل أولاً
-                local stagesExist = false
-                local stagesFolder = workspace:FindFirstChild("BoatStages")
-                if stagesFolder then
-                    local normalStages = stagesFolder:FindFirstChild("NormalStages")
-                    if normalStages then
-                        stagesExist = true
-                        for j = 1, 10 do
-                            if not normalStages:FindFirstChild("CaveStage" .. j) then
-                                stagesExist = false
-                                break
-                            end
-                        end
-                    end
-                end
-                
-                if not stagesExist then
-                    if isArabic then
-                        StatusBar.Text = "⏳ انتظار تحميل المراحل..."
-                    else
-                        StatusBar.Text = "⏳ Waiting for stages to load..."
-                    end
-                    task.wait(2)
-                    continue
-                end
-                
-                local char = Player.Character
-                if not char or not char:FindFirstChild("HumanoidRootPart") then 
-                    task.wait(1)
-                    continue 
-                end
-                local hrp = char.HumanoidRootPart
-                
-                for i = 1, 10 do
-                    if not getgenv().Farming then break end
-                    StatusBar.Text = "📍 " .. i .. "/10"
-                    if isArabic then
-                        LogText.Text = "🚀 مرحلة " .. i
-                    else
-                        LogText.Text = "🚀 Stage " .. i
-                    end
-                    
-                    local stage = workspace.BoatStages.NormalStages:FindFirstChild("CaveStage" .. i)
-                    if stage and stage:FindFirstChild("DarknessPart") then
-                        createPlatform(stage.DarknessPart.Position)
-                        hrp.CFrame = stage.DarknessPart.CFrame + Vector3.new(0, 5, 0)
-                    end
-                    task.wait(2.5)
-                end
-                
-                if not getgenv().Farming then break end
-                
-                if isArabic then
-                    StatusBar.Text = "🏆 الكنز"
-                    LogText.Text = "💛 فتح الكنز..."
-                else
-                    StatusBar.Text = "🏆 Treasure"
-                    LogText.Text = "💛 Opening chest..."
-                end
-                
-                local cp = Vector3.new(-51, -360, 9498)
-                createPlatform(cp)
-                hrp.CFrame = CFrame.new(cp + Vector3.new(0, 3, 0))
-                task.wait(0.5)
-                openChestNOW()
-                
-                if isArabic then
-                    LogText.Text = "🎉 تم فتح الكنز!"
-                else
-                    LogText.Text = "🎉 Chest opened!"
-                end
-                
-                task.wait(12)
-                if not getgenv().Farming then break end
-                
-                if char:FindFirstChild("Humanoid") then char.Humanoid.Health = 0 end
-                task.wait(6)
-            else
-                task.wait(0.5)
-            end
-        end
-    end)
-    
+
     FarmBtn.MouseButton1Click:Connect(function()
         getgenv().Farming = not getgenv().Farming
         if getgenv().Farming then
             FarmBtn.Text = isArabic and "⏹ إيقاف" or "⏹ Stop"
             FarmBtn.BackgroundColor3 = Color3.fromRGB(150, 10, 10)
             LogText.Text = isArabic and "🔥 اشتغلنا!" or "🔥 Farming started!"
-            if isArabic then
-                StatusBar.Text = "⚡ الفارم شغال..."
-            else
-                StatusBar.Text = "⚡ Farming..."
-            end
+            StatusBar.Text = isArabic and "⚡ الفارم شغال..." or "⚡ Farming..."
         else
             FarmBtn.Text = isArabic and "▶ تشغيل الفارم" or "▶ Start Farm"
             FarmBtn.BackgroundColor3 = Color3.fromRGB(200, 20, 20)
             LogText.Text = isArabic and "💤 توقف" or "💤 Stopped"
-            if isArabic then
-                StatusBar.Text = "⚡ جاهز للانطلاق"
-            else
-                StatusBar.Text = "⚡ Ready to go"
-            end
+            StatusBar.Text = isArabic and "⚡ جاهز للانطلاق" or "⚡ Ready to go"
         end
     end)
-    
+
+    StartFarmingLoop()
+
     game.StarterGui:SetCore("SendNotification", {Title = "🔥 AMT HUB", Text = "تم التحميل", Duration = 2})
     LogText.Text = "⚡ AMT HUB v4.0 | جاهز"
 end
