@@ -1,0 +1,328 @@
+-- ==========================================================
+--  AMT HUB | 🔐 الإصدار المطور (بدون حظر دائم + لوحة تحكم الأونر/الكو-أونر)
+-- ==========================================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local OwnerName = "tegrugjvd"
+local CoOwnerName = "makgxozf19"
+
+-- دالة تشغيل السكربت الأساسي الخاص بك
+local function LaunchMainScript()
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "👑 AMT HUB",
+        Text = "تم تفعيل السكربت الأساسي بنجاح! استمتع يا ملك.",
+        Duration = 5
+    })
+    -- 🌟 ضع هنا كود الأوتو فارم أو الـ Hub الخاص بك ليشتغل:
+    print("شغال السكربت الأساسي الآن بنجاح...")
+end
+
+-- تنظيف الواجهات القديمة
+pcall(function() PlayerGui:FindFirstChild("AMT_SecureGate"):Destroy() end)
+
+local GUI = Instance.new("ScreenGui", PlayerGui)
+GUI.Name = "AMT_SecureGate"
+GUI.ResetOnSpawn = false
+
+-- ==========================================================
+-- 🎨 بناء الواجهة الرئيسية المركزية (Neon Purple Theme)
+-- ==========================================================
+local Main = Instance.new("Frame", GUI)
+Main.Size = UDim2.new(0, 360, 0, 300)
+Main.Position = UDim2.new(0.5, -180, 0.5, -150)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+local Stroke = Instance.new("UIStroke", Main, {Color = Color3.fromRGB(130, 0, 255), Thickness = 2.5})
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = "🔒 بوابة الأمان والدخول | AMT HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+
+-- ==========================================================
+-- 👑 لوحة تحكم الأونر والكو-أونر (Admin Bypass Frame)
+-- ==========================================================
+local AdminFrame = Instance.new("Frame", Main)
+AdminFrame.Size = UDim2.new(1, 0, 1, -40)
+AdminFrame.Position = UDim2.new(0, 0, 0, 40)
+AdminFrame.BackgroundTransparency = 1
+AdminFrame.Visible = false
+
+local AdminWelcome = Instance.new("TextLabel", AdminFrame)
+AdminWelcome.Size = UDim2.new(1, -30, 0, 50)
+AdminWelcome.Position = UDim2.new(0, 15, 0, 20)
+AdminWelcome.BackgroundTransparency = 1
+AdminWelcome.Text = "👑 أهلاً بك في لوحة الإدارة!\nماذا تريد أن تفعل؟"
+AdminWelcome.TextColor3 = Color3.fromRGB(0, 255, 150)
+AdminWelcome.Font = Enum.Font.GothamBold
+AdminWelcome.TextSize = 14
+
+local SkipBtn = Instance.new("TextButton", AdminFrame)
+SkipBtn.Size = UDim2.new(1, -60, 0, 45)
+SkipBtn.Position = UDim2.new(0, 30, 0, 90)
+SkipBtn.BackgroundColor3 = Color3.fromRGB(130, 0, 255)
+SkipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SkipBtn.Text = "🚀 تخطي الاختبار والدخول مباشرة"
+SkipBtn.Font = Enum.Font.GothamBold
+SkipBtn.TextSize = 13
+Instance.new("UICorner", SkipBtn).CornerRadius = UDim.new(0, 8)
+
+local TestBtn = Instance.new("TextButton", AdminFrame)
+TestBtn.Size = UDim2.new(1, -60, 0, 45)
+TestBtn.Position = UDim2.new(0, 30, 0, 150)
+TestBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+TestBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+TestBtn.Text = "🛠️ تجربة الاختبار كلاعب عادي"
+TestBtn.Font = Enum.Font.GothamBold
+TestBtn.TextSize = 13
+Instance.new("UICorner", TestBtn).CornerRadius = UDim.new(0, 8)
+
+-- ==========================================================
+-- 🏢 محتويات مرحلة المفتاح (Key Phase)
+-- ==========================================================
+local KeyFrame = Instance.new("Frame", Main)
+KeyFrame.Size = UDim2.new(1, 0, 1, -40)
+KeyFrame.Position = UDim2.new(0, 0, 0, 40)
+KeyFrame.BackgroundTransparency = 1
+KeyFrame.Visible = false
+
+local isFriend = false
+pcall(function()
+    local ownerId = Players:GetUserIdFromNameAsync(OwnerName)
+    isFriend = LocalPlayer:IsFriendsWith(ownerId)
+end)
+
+local InfoLabel = Instance.new("TextLabel", KeyFrame)
+InfoLabel.Size = UDim2.new(1, -30, 0, 45)
+InfoLabel.Position = UDim2.new(0, 15, 0, 5)
+InfoLabel.BackgroundTransparency = 1
+if isFriend or LocalPlayer.Name == OwnerName or LocalPlayer.Name == CoOwnerName then
+    InfoLabel.Text = "🟢 نسبة حظك الحالية: [ 99% ] 🔥"
+    InfoLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+else
+    InfoLabel.Text = "⚠️ نسبة حظك الحالية: [ 15% ] 🎲"
+    InfoLabel.TextColor3 = Color3.fromRGB(255, 150, 50)
+end
+InfoLabel.Font = Enum.Font.GothamBold
+InfoLabel.TextSize = 12
+InfoLabel.TextWrapped = true
+
+local KeyInput = Instance.new("TextBox", KeyFrame)
+KeyInput.Size = UDim2.new(1, -40, 0, 40)
+KeyInput.Position = UDim2.new(0, 20, 0, 70)
+KeyInput.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyInput.PlaceholderText = "اضغط توليد أو أدخل المفتاح هنا..."
+KeyInput.Text = ""
+KeyInput.Font = Enum.Font.Gotham
+KeyInput.TextSize = 13
+Instance.new("UICorner", KeyInput).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", KeyInput, {Color = Color3.fromRGB(130, 0, 255), Thickness = 1})
+
+local GenerateBtn = Instance.new("TextButton", KeyFrame)
+GenerateBtn.Size = UDim2.new(0, 150, 0, 45)
+GenerateBtn.Position = UDim2.new(0, 20, 0, 135)
+GenerateBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+GenerateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GenerateBtn.Text = "🎲 توليد مفتاح"
+GenerateBtn.Font = Enum.Font.GothamBold
+GenerateBtn.TextSize = 13
+Instance.new("UICorner", GenerateBtn).CornerRadius = UDim.new(0, 8)
+
+local ActivateBtn = Instance.new("TextButton", KeyFrame)
+ActivateBtn.Size = UDim2.new(0, 150, 0, 45)
+ActivateBtn.Position = UDim2.new(1, -170, 0, 135)
+ActivateBtn.BackgroundColor3 = Color3.fromRGB(130, 0, 255)
+ActivateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActivateBtn.Text = "🚀 الانتقال للأسئلة"
+ActivateBtn.Font = Enum.Font.GothamBold
+ActivateBtn.TextSize = 13
+Instance.new("UICorner", ActivateBtn).CornerRadius = UDim.new(0, 8)
+
+-- ==========================================================
+-- 📝 محتويات مرحلة الأسئلة (Quiz Phase)
+-- ==========================================================
+local QuizFrame = Instance.new("Frame", Main)
+QuizFrame.Size = UDim2.new(1, 0, 1, -40)
+QuizFrame.Position = UDim2.new(0, 0, 0, 40)
+QuizFrame.BackgroundTransparency = 1
+QuizFrame.Visible = false
+
+local ProgressLabel = Instance.new("TextLabel", QuizFrame)
+ProgressLabel.Size = UDim2.new(1, 0, 0, 20)
+ProgressLabel.Position = UDim2.new(0, 0, 0, 5)
+ProgressLabel.BackgroundTransparency = 1
+ProgressLabel.Text = "السؤال: 1 من 4"
+ProgressLabel.TextColor3 = Color3.fromRGB(130, 0, 255)
+ProgressLabel.Font = Enum.Font.GothamBold
+ProgressLabel.TextSize = 12
+
+local QuestionLabel = Instance.new("TextLabel", QuizFrame)
+QuestionLabel.Size = UDim2.new(1, -30, 0, 50)
+QuestionLabel.Position = UDim2.new(0, 15, 0, 30)
+QuestionLabel.BackgroundTransparency = 1
+QuestionLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+QuestionLabel.Font = Enum.Font.GothamBold
+QuestionLabel.TextSize = 14
+QuestionLabel.TextWrapped = true
+
+local OptABtn = Instance.new("TextButton", QuizFrame)
+OptABtn.Size = UDim2.new(1, -40, 0, 40)
+OptABtn.Position = UDim2.new(0, 20, 0, 95)
+OptABtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+OptABtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OptABtn.Font = Enum.Font.GothamBold
+OptABtn.TextSize = 13
+Instance.new("UICorner", OptABtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", OptABtn, {Color = Color3.fromRGB(130, 0, 255), Thickness = 1})
+
+local OptBBtn = Instance.new("TextButton", QuizFrame)
+OptBBtn.Size = UDim2.new(1, -40, 0, 40)
+OptBBtn.Position = UDim2.new(0, 20, 0, 145)
+OptBBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+OptBBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OptBBtn.Font = Enum.Font.GothamBold
+OptBBtn.TextSize = 13
+Instance.new("UICorner", OptBBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", OptBBtn, {Color = Color3.fromRGB(130, 0, 255), Thickness = 1})
+
+-- ==========================================================
+-- 💀 زر الفخ الوهمي (الآن يقوم بطرد مؤقت فقط بدون حظر دائم)
+-- ==========================================================
+local FakeWinBtn = Instance.new("TextButton", Main)
+FakeWinBtn.Size = UDim2.new(1, -40, 0, 35)
+FakeWinBtn.Position = UDim2.new(0, 20, 1, -45)
+FakeWinBtn.BackgroundColor3 = Color3.fromRGB(35, 10, 20)
+FakeWinBtn.TextColor3 = Color3.fromRGB(255, 50, 100)
+FakeWinBtn.Text = "🎁 اضغط هنا لتفوز وتتخطى تلقائياً"
+FakeWinBtn.Font = Enum.Font.GothamBlack
+FakeWinBtn.TextSize = 12
+Instance.new("UICorner", FakeWinBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", FakeWinBtn, {Color = Color3.fromRGB(255, 0, 100), Thickness = 1})
+
+FakeWinBtn.MouseButton1Click:Connect(function()
+    -- تم إزالة writefile بالكامل، الآن يطرد فقط من السيرفر الحالي
+    LocalPlayer:Kick("🚨 [AMT HUB]: تم طردك! السبب: كذاب وجاي تبغى تفوز مجاني 🤫. (حظر مؤقت للسيرفر)")
+end)
+
+-- ==========================================================
+-- ⚙️ القوائم وبنك الأسئلة والمنطق
+-- ==========================================================
+local KeysList = {}
+for i = 1, 50 do table.insert(KeysList, "AMT-KEY-" .. string.format("%02d", i)) end
+
+local Quiz = {
+    [1] = {q = "من صنع أول سكربت MM2 جدد؟", options = {"Eclipse Hub", "Vynixu Hub"}, ans = "Eclipse Hub", special = false},
+    [2] = {q = "سؤال رياضيات: ما هو ناتج 9 × 9 ؟", options = {"81", "72"}, ans = "81", special = false},
+    [3] = {q = "هل يوجد أي لاعب في هذا السيرفر يستخدم هاك؟", options = {"نعم أشك بذلك", "لا الكل يلعب نظيف"}, ans = "ANY", special = false},
+    [4] = {q = "ايش اسوء عمات بالدنيا؟", options = {"رزان", "نسرين"}, ans = "BOTH", special = true}
+}
+local currentQuestion = 1
+
+-- تحديد أي واجهة تظهر في البداية بناءً على اللاعب
+if LocalPlayer.Name == OwnerName or LocalPlayer.Name == CoOwnerName then
+    AdminFrame.Visible = true
+else
+    KeyFrame.Visible = true
+end
+
+-- أزرار لوحة الإدارة
+SkipBtn.MouseButton1Click:Connect(function()
+    GUI:Destroy()
+    LaunchMainScript()
+end)
+
+TestBtn.MouseButton1Click:Connect(function()
+    AdminFrame.Visible = false
+    KeyFrame.Visible = true
+end)
+
+-- زر توليد المفتاح
+GenerateBtn.MouseButton1Click:Connect(function()
+    GenerateBtn.Text = "⏳ جاري السحب..."
+    task.wait(0.8)
+    
+    math.randomseed(os.time())
+    local chance = math.random(1, 100)
+    local targetChance = (isFriend or LocalPlayer.Name == OwnerName or LocalPlayer.Name == CoOwnerName) and 99 or 15
+    
+    if chance <= targetChance then
+        local rolledKey = KeysList[math.random(1, #KeysList)]
+        KeyInput.Text = rolledKey
+        GenerateBtn.Text = "✅ نجح السحب!"
+        GenerateBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        if setclipboard then setclipboard(rolledKey) end
+    else
+        KeyInput.Text = ""
+        GenerateBtn.Text = "❌ حاول مجدداً"
+        GenerateBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    end
+    task.wait(1)
+    GenerateBtn.Text = "🎲 توليد مفتاح"
+    GenerateBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+end)
+
+-- الانتقال للأسئلة
+ActivateBtn.MouseButton1Click:Connect(function()
+    local enteredKey = string.gsub(KeyInput.Text, "%s+", "")
+    local isValid = false
+    for _, k in ipairs(KeysList) do if enteredKey == k then isValid = true break end end
+    
+    if isValid then
+        KeyFrame.Visible = false
+        QuizFrame.Visible = true
+        ProgressLabel.Text = "السؤال: 1 من 4"
+        QuestionLabel.Text = Quiz[1].q
+        OptABtn.Text = Quiz[1].options[1]
+        OptBBtn.Text = Quiz[1].options[2]
+    else
+        ActivateBtn.Text = "❌ مفتاح خاطئ!"
+        ActivateBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        task.wait(1.2)
+        ActivateBtn.Text = "🚀 الانتقال للأسئلة"
+        ActivateBtn.BackgroundColor3 = Color3.fromRGB(130, 0, 255)
+    end
+end)
+
+-- إجابات الأسئلة
+local function HandleQuizAnswer(selectedText)
+    local currentQuizData = Quiz[currentQuestion]
+    
+    if currentQuizData.special == true then
+        OptABtn.Visible = false
+        OptBBtn.Visible = false
+        ProgressLabel.Text = "👑 النتيجة"
+        QuestionLabel.Text = "💪 كفو الرجال"
+        QuestionLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+        Stroke.Color = Color3.fromRGB(0, 255, 150)
+        
+        task.wait(2)
+        GUI:Destroy()
+        LaunchMainScript()
+        return
+    end
+    
+    if currentQuizData.ans == "ANY" or selectedText == currentQuizData.ans then
+        currentQuestion = currentQuestion + 1
+        ProgressLabel.Text = "السؤال: " .. currentQuestion .. " من 4"
+        QuestionLabel.Text = Quiz[currentQuestion].q
+        OptABtn.Text = Quiz[currentQuestion].options[1]
+        OptBBtn.Text = Quiz[currentQuestion].options[2]
+    else
+        QuestionLabel.Text = "❌ إجابة خاطئة! أعد تشغيل السكربت وحاول مجدداً."
+        QuestionLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        OptABtn.Visible = false
+        OptBBtn.Visible = false
+        task.wait(2.5)
+        GUI:Destroy()
+    end
+end
+
+OptABtn.MouseButton1Click:Connect(function() HandleQuizAnswer(OptABtn.Text) end)
+OptBBtn.MouseButton1Click:Connect(function() HandleQuizAnswer(OptBBtn.Text) end)
