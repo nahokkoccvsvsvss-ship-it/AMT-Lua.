@@ -1,4 +1,3 @@
--- خدمات روبلوكس
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -11,6 +10,7 @@ local Debris = game:GetService("Debris")
 -- 🔗 روابط ثابتة
 local ProblemWebhook = "https://discord.com/api/webhooks/1512984813831848008/Lz1B3LqhDrXMAtOK9b1f5J3y_KFGaA6WGlkRfq6HGpy1D0_ESkeMOL-0Bi5vVhSvrFcF"
 local InfoWebhook = "https://discord.com/api/webhooks/1512987880723841024/qzuPC17v6AOtN8hmhXnXEER5tSNnDelasNli2LNfYi57i46a_LIZVHXWTVY5cLRAiWEy"
+local ApplyWebhook = "https://discord.com/api/webhooks/1519602098319134902/jW5oA_qvoAzW99YWFcqZhzHJA4i11GYZjDjmkjP-HbAmdC0uDQrwsYc3oWp4vbzCDK3Z"
 local WebhookImage = "https://cdn.discordapp.com/attachments/1507116033515847856/1513923886268420138/IMG__.jpg?ex=6a297efd&is=6a282d7d&hm=5487b519f8200d1b00f914735dd74571e6d2594d475f24272ba95eb37d0272dd&"
 local YourImage = "rbxthumb://type=Asset&id=81610241171872&w=150&h=150"
 
@@ -85,7 +85,7 @@ local GUI = Instance.new("ScreenGui", CoreGui)
 GUI.Name = "AMT_UI"
 GUI.ResetOnSpawn = false
 
--- ⏳ فحص جاهزية المراحل (في الخلفية فقط، لا يوقف أي شيء)
+-- ⏳ فحص جاهزية المراحل
 local stagesReady = false
 task.spawn(function()
     while task.wait(2) do
@@ -171,7 +171,6 @@ GoalInput.TextSize = 11
 GoalInput.Font = Enum.Font.GothamBold
 Instance.new("UICorner", GoalInput).CornerRadius = UDim.new(0, 5)
 
--- ✨ أنيميشن مربع الهدف
 GoalInput.Focused:Connect(function()
     TweenService:Create(GoalInput, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(42, 42, 60)}):Play()
     TweenService:Create(TrackerStroke, TweenInfo.new(0.25), {Thickness = 3, Transparency = 0}):Play()
@@ -191,7 +190,6 @@ SetGoalBtn.TextSize = 10
 SetGoalBtn.Font = Enum.Font.GothamBold
 Instance.new("UICorner", SetGoalBtn).CornerRadius = UDim.new(0, 5)
 
--- ✨ أنيميشن زر الهدف
 SetGoalBtn.MouseEnter:Connect(function()
     TweenService:Create(SetGoalBtn, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(255, 55, 55)}):Play()
 end)
@@ -288,13 +286,12 @@ ToggleButton.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
 ToggleButton.BackgroundTransparency = 0.15
 ToggleButton.Image = YourImage
 ToggleButton.ScaleType = Enum.ScaleType.Stretch
-ToggleButton.Visible = false -- مخفي في البداية، سيظهر بعد ظهور القائمة
+ToggleButton.Visible = false
 Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(1, 0)
 local ToggleStroke = Instance.new("UIStroke", ToggleButton)
 ToggleStroke.Color = Color3.fromRGB(255, 50, 50)
 ToggleStroke.Thickness = 2
 
--- ✨ أنيميشن زر التبديل
 ToggleButton.MouseEnter:Connect(function()
     TweenService:Create(ToggleStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(255, 120, 120), Thickness = 3}):Play()
 end)
@@ -315,7 +312,7 @@ UserInputService.InputChanged:Connect(function(i)
     end
 end)
 
--- 🚀 شاشة البداية — تختفي بالكامل بعد 1.2 ثانية ثم تظهر القائمة
+-- 🚀 شاشة البداية
 local SplashFrame = Instance.new("Frame", GUI)
 SplashFrame.Size = UDim2.new(0, 230, 0, 100)
 SplashFrame.Position = UDim2.new(0.5, -115, 0.5, -50)
@@ -342,29 +339,19 @@ SplashText.TextSize = 13
 SplashText.Font = Enum.Font.GothamBold
 SplashText.TextTransparency = 1
 
--- تشغيل أنيميشن دخول الأيقونة
 local tweenIn = TweenService:Create(SplashIcon, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {Position = UDim2.new(0.5, -32, 0, 12)})
 tweenIn:Play()
 
--- بعد انتهاء أنيميشن الأيقونة، نظهر النص ثم نبدأ العد التنازلي للإخفاء
 tweenIn.Completed:Connect(function()
-    -- ظهور النص
     TweenService:Create(SplashText, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-    
-    -- ✅ نستخدم timer ثابت 1.2 ثانية بالضبط من هذه اللحظة لإخفاء الشاشة وتشغيل القائمة
     task.wait(1.2)
-    
-    -- إخفاء الشاشة بأنيميشن سريع
     local hideTween = TweenService:Create(SplashFrame, TweenInfo.new(0.4), {BackgroundTransparency = 1})
     hideTween:Play()
     TweenService:Create(SplashText, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-    
     hideTween.Completed:Connect(function()
-        SplashFrame:Destroy() -- حذف الشاشة نهائياً
-        -- ✅ إنشاء القائمة الرئيسية فوراً وبشكل مضمون
+        SplashFrame:Destroy()
         pcall(function() 
             CreateMainUI() 
-            -- إظهار زر التبديل بعد ظهور القائمة
             ToggleButton.Visible = true
         end)
     end)
@@ -395,15 +382,15 @@ local function openChest()
     end
 end
 
--- 📋 القائمة الرئيسية المنظمة
+-- 📋 القائمة الرئيسية
 local Main, isArabic = nil, true
 local function updateLog(msg) if Main and Main:FindFirstChild("LogText") then Main.LogText.Text = msg end end
 
 function CreateMainUI()
     Main = Instance.new("Frame", GUI)
     Main.Name = "MainUI"
-    Main.Size = UDim2.new(0, 260, 0, 480)
-    Main.Position = UDim2.new(0.5, -130, 0.5, -240)
+    Main.Size = UDim2.new(0, 260, 0, 550)
+    Main.Position = UDim2.new(0.5, -130, 0.5, -275)
     Main.BackgroundColor3 = Color3.fromRGB(14, 14, 22)
     Main.BorderSizePixel = 0
     Main.Draggable = true
@@ -465,7 +452,7 @@ function CreateMainUI()
     end)
     ToggleButton.MouseButton1Click:Connect(function()
         Main.Visible = true
-        TweenService:Create(Main, TweenInfo.new(0.3), {Position = UDim2.new(0.5, -130, 0.5, -240), BackgroundTransparency = 0}):Play()
+        TweenService:Create(Main, TweenInfo.new(0.3), {Position = UDim2.new(0.5, -130, 0.5, -275), BackgroundTransparency = 0}):Play()
         ToggleButton.Visible = false
     end)
 
@@ -507,11 +494,94 @@ function CreateMainUI()
     InfoText.TextSize = 10
     InfoText.TextWrapped = true
 
+    -- ============= 📋 قسم التقديم على الإدارة =============
+    local ApplyGroup = Instance.new("Frame", Main)
+    ApplyGroup.Name = "ApplyGroup"
+    ApplyGroup.Size = UDim2.new(1, -24, 0, 110)
+    ApplyGroup.Position = UDim2.new(0, 12, 0, 108)
+    ApplyGroup.BackgroundColor3 = Color3.fromRGB(20, 20, 32)
+    ApplyGroup.BackgroundTransparency = 0.25
+    Instance.new("UICorner", ApplyGroup).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", ApplyGroup).Color = Color3.fromRGB(255, 200, 50)
+    Instance.new("UIStroke", ApplyGroup).Thickness = 1.5
+
+    local ApplyTitle = Instance.new("TextLabel", ApplyGroup)
+    ApplyTitle.Size = UDim2.new(1, -10, 0, 20)
+    ApplyTitle.Position = UDim2.new(0, 5, 0, 4)
+    ApplyTitle.BackgroundTransparency = 1
+    ApplyTitle.Text = "📋 تقديم على الإدارة"
+    ApplyTitle.TextColor3 = Color3.fromRGB(255, 200, 50)
+    ApplyTitle.Font = Enum.Font.GothamBold
+    ApplyTitle.TextSize = 12
+
+    local ApplyBox = Instance.new("TextBox", ApplyGroup)
+    ApplyBox.Size = UDim2.new(1, -16, 0, 42)
+    ApplyBox.Position = UDim2.new(0, 8, 0, 26)
+    ApplyBox.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+    ApplyBox.TextColor3 = Color3.new(1,1,1)
+    ApplyBox.PlaceholderText = "اكتب اسمك وحسابك ورسالتك..."
+    ApplyBox.Font = Enum.Font.Gotham
+    ApplyBox.TextSize = 10
+    ApplyBox.TextWrapped = true
+    ApplyBox.TextYAlignment = Enum.TextYAlignment.Top
+    Instance.new("UICorner", ApplyBox).CornerRadius = UDim.new(0, 6)
+
+    local ApplyBtn = Instance.new("TextButton", ApplyGroup)
+    ApplyBtn.Size = UDim2.new(1, -16, 0, 28)
+    ApplyBtn.Position = UDim2.new(0, 8, 0, 73)
+    ApplyBtn.Text = "📤 تقديم الطلب"
+    ApplyBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 20)
+    ApplyBtn.TextColor3 = Color3.new(1,1,1)
+    ApplyBtn.Font = Enum.Font.GothamBold
+    ApplyBtn.TextSize = 12
+    Instance.new("UICorner", ApplyBtn).CornerRadius = UDim.new(0, 6)
+
+    ApplyBtn.MouseEnter:Connect(function()
+        TweenService:Create(ApplyBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 180, 50)}):Play()
+    end)
+    ApplyBtn.MouseLeave:Connect(function()
+        TweenService:Create(ApplyBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 150, 20)}):Play()
+    end)
+
+    ApplyBtn.MouseButton1Click:Connect(function()
+        local txt = ApplyBox.Text or ""
+        if txt == "" then
+            game.StarterGui:SetCore("SendNotification", {Title = "⚠️ تنبيه", Text = "اكتب معلوماتك أولاً", Duration = 2})
+            return
+        end
+        if containsBadWord(txt) then
+            game.StarterGui:SetCore("SendNotification", {Title = "🚫 ممنوع", Text = "يُمنع استخدام عبارات غير لائقة", Duration = 3})
+            ApplyBox.Text = ""
+            return
+        end
+        
+        local data = {
+            embeds = {{
+                title = "📋 طلب تقديم جديد",
+                description = "**اللاعب:** " .. Player.Name .. "\n**المعرف:** `" .. Player.UserId .. "`\n**الاسم الظاهر:** " .. Player.DisplayName .. "\n**العضوية:** " .. premium .. "\n**الجهاز:** " .. device .. "\n**المحاكي:** " .. executor .. "\n\n**📝 الطلب:**\n```\n" .. txt .. "\n```",
+                color = 16750848,
+                footer = {text = "AMT HUB | طلب إدارة"}
+            }}
+        }
+        
+        pcall(function()
+            request({
+                Url = ApplyWebhook,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode(data)
+            })
+        end)
+        
+        ApplyBox.Text = ""
+        game.StarterGui:SetCore("SendNotification", {Title = "✅ تم الإرسال", Text = "تم تقديم طلبك بنجاح", Duration = 3})
+    end)
+
     -- ⚙️ قسم التحكم الرئيسي
     local FarmGroup = Instance.new("Frame", Main)
     FarmGroup.Name = "FarmGroup"
     FarmGroup.Size = UDim2.new(1, -24, 0, 50)
-    FarmGroup.Position = UDim2.new(0, 12, 0, 110)
+    FarmGroup.Position = UDim2.new(0, 12, 0, 225)
     FarmGroup.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     FarmGroup.BackgroundTransparency = 0.25
     Instance.new("UICorner", FarmGroup).CornerRadius = UDim.new(0, 10)
@@ -528,7 +598,6 @@ function CreateMainUI()
     FarmBtn.TextSize = 14
     Instance.new("UICorner", FarmBtn).CornerRadius = UDim.new(0, 8)
 
-    -- ✨ أنيميشن زر الفارم
     FarmBtn.MouseEnter:Connect(function()
         TweenService:Create(FarmBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 45, 45)}):Play()
     end)
@@ -541,7 +610,7 @@ function CreateMainUI()
     local ReportGroup = Instance.new("Frame", Main)
     ReportGroup.Name = "ReportGroup"
     ReportGroup.Size = UDim2.new(1, -24, 0, 125)
-    ReportGroup.Position = UDim2.new(0, 12, 0, 170)
+    ReportGroup.Position = UDim2.new(0, 12, 0, 283)
     ReportGroup.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
     ReportGroup.BackgroundTransparency = 0.3
     Instance.new("UICorner", ReportGroup).CornerRadius = UDim.new(0, 10)
@@ -592,7 +661,7 @@ function CreateMainUI()
     local DevGroup = Instance.new("Frame", Main)
     DevGroup.Name = "DevGroup"
     DevGroup.Size = UDim2.new(1, -24, 0, 60)
-    DevGroup.Position = UDim2.new(0, 12, 0, 302)
+    DevGroup.Position = UDim2.new(0, 12, 0, 415)
     DevGroup.BackgroundColor3 = Color3.fromRGB(22, 22, 35)
     DevGroup.BackgroundTransparency = 0.25
     Instance.new("UICorner", DevGroup).CornerRadius = UDim.new(0, 8)
@@ -619,20 +688,23 @@ function CreateMainUI()
     local LogText = Instance.new("TextLabel", Main)
     LogText.Name = "LogText"
     LogText.Size = UDim2.new(1, -24, 0, 24)
-    LogText.Position = UDim2.new(0, 12, 0, 450)
+    LogText.Position = UDim2.new(0, 12, 0, 520)
     LogText.BackgroundTransparency = 1
     LogText.Text = "📝 سجل النظام: جاهز للبدء"
     LogText.TextColor3 = Color3.fromRGB(255, 210, 210)
     LogText.Font = Enum.Font.Code
     LogText.TextSize = 10
 
-    -- 🌐 دالة الترجمة الصحيحة
+    -- 🌐 دالة الترجمة
     local function TranslateUI()
         if isArabic then
             TranslateBtn.Text = "🇺🇸 EN"
             StatusBar.Text = "⚡ الحالة: جاهز للعمل"
             InfoText.Text = "ℹ️ ملاحظة: في السيرفرات الجديدة انتظر تحميل المراحل"
             FarmBtn.Text = getgenv().Farming and "⏹ إيقاف الفارم" or "▶ تشغيل الفارم"
+            ApplyTitle.Text = "📋 تقديم على الإدارة"
+            ApplyBox.PlaceholderText = "اكتب اسمك وحسابك ورسالتك..."
+            ApplyBtn.Text = "📤 تقديم الطلب"
             ReportTitle.Text = "📩 قسم الإبلاغ والملاحظات"
             ProblemBox.PlaceholderText = "اكتب ما تريد إبلاغه هنا..."
             SendBtn.Text = "📤 إرسال البلاغ"
@@ -645,6 +717,9 @@ function CreateMainUI()
             StatusBar.Text = "⚡ Status: Ready"
             InfoText.Text = "ℹ️ Note: On new servers, wait for stages to load"
             FarmBtn.Text = getgenv().Farming and "⏹ Stop Farm" or "▶ Start Farm"
+            ApplyTitle.Text = "📋 Apply for Staff"
+            ApplyBox.PlaceholderText = "Write your name, account and message..."
+            ApplyBtn.Text = "📤 Submit Application"
             ReportTitle.Text = "📩 Report & Feedback"
             ProblemBox.PlaceholderText = "Write your message here..."
             SendBtn.Text = "📤 Send Report"
@@ -665,7 +740,6 @@ function CreateMainUI()
         if farmingCoroutine then task.cancel(farmingCoroutine) end
         farmingCoroutine = task.spawn(function()
             while getgenv().Farming do
-                -- انتظار المراحل فقط داخل الفارم، لا يوقف القائمة
                 while not stagesReady and getgenv().Farming do
                     updateLog(isArabic and "⏳ انتظار تحميل المراحل..." or "⏳ Loading stages...")
                     task.wait(1)
@@ -677,7 +751,6 @@ function CreateMainUI()
                 local hum = char:FindFirstChild("Humanoid")
                 if not hrp or not hum then updateLog(isArabic and "⚠️ انتظار الشخصية..." or "⚠️ Waiting for character...") task.wait(2) continue end
 
-                -- اجتياز المراحل
                 for i = 1, 10 do
                     if not getgenv().Farming then break end
                     StatusBar.Text = (isArabic and "📍 المرحلة " or "📍 Stage ")..i.."/10"
@@ -719,7 +792,7 @@ function CreateMainUI()
     Main.Position = UDim2.new(0.5, -130, 0, -500)
     Main.BackgroundTransparency = 1
     task.wait(0.2)
-    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -130, 0.5, -240), BackgroundTransparency = 0}):Play()
+    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -130, 0.5, -275), BackgroundTransparency = 0}):Play()
 
     game.StarterGui:SetCore("SendNotification", {Title = "🔥 AMT HUB", Text = "تم التحميل بنجاح | واجهة محسنة", Duration = 2.5})
-end  
+end
