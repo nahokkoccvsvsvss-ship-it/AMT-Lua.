@@ -1,106 +1,3 @@
---[[
-    ╔══════════════════════════════════════════════════════════════╗
-    ║          بلوكس فروتس - النسخة العربية الكاملة               ║
-    ║          تصميم: أزرق غامق | أبيض | رمادي                    ║
-    ║          يعمل على: Delta Executor                           ║
-    ╚══════════════════════════════════════════════════════════════╝
---]]
-
--- ─────────────────────────────────────────────────────────────────────────────
--- الخدمات الأساسية
--- ─────────────────────────────────────────────────────────────────────────────
-local Players         = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local TweenService    = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local HttpService     = game:GetService("HttpService")
--- RunService not needed in this script
-
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
-local Character   = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HRP         = Character:WaitForChild("HumanoidRootPart")
-
--- تحديث المشخصية عند الولادة من جديد
-LocalPlayer.CharacterAdded:Connect(function(char)
-    Character = char
-    HRP = char:WaitForChild("HumanoidRootPart")
-end)
-
--- ─────────────────────────────────────────────────────────────────────────────
--- الإعدادات
--- ─────────────────────────────────────────────────────────────────────────────
-local API_URL = "https://f204fe33-930f-4adc-8b9b-45f1f4838b93-00-3mm98lpnlenk.pike.replit.dev/api"
-
--- معرّفات الأماكن (Place IDs) لكل بحر
-local PLACE_IDS = {
-    ["البحر الأول"]  = 2753915549,
-    ["البحر الثاني"] = 4442272183,
-    ["البحر الثالث"] = 7449423850,
-}
-
--- قائمة العناصر النادرة (مُرسَلة للـ API كـ query params)
-local RARE_ITEMS = {
-    بوسات  = {param = "bosses",  values = {"Rip_Indra", "Darkbeard", "Soul_Reaper"}},
-    فروتات = {param = "fruits",  values = {"Dragon", "Leopard", "Dough", "Kitsune"}},
-    سيوف   = {param = "swords",  values = {"Yama", "Tushita", "True Triple Katana"}},
-}
-
--- مواقع الانتقال (الاسم + الإحداثيات)
-local LOCATIONS = {
-    { name = "جزيرة البداية",   pos = Vector3.new(-1267, 130, -1727) },
-    { name = "الغابة",           pos = Vector3.new(-300,    6,  1800) },
-    { name = "قرية القراصنة",   pos = Vector3.new(-1387,   4,   -30) },
-    { name = "الصحراء",          pos = Vector3.new(  932,   7,   836) },
-    { name = "القرية المتجمدة",  pos = Vector3.new( 1200,  18,   210) },
-    { name = "قلعة البحرية",     pos = Vector3.new(  650,   5, -1600) },
-    { name = "السماء",           pos = Vector3.new(-3875, 2240,  1350) },
-    { name = "المدينة المائية",  pos = Vector3.new( 4320,  69,   800) },
-    { name = "قرية الحمم",       pos = Vector3.new(  300,   6,  1650) },
-    { name = "الكولوسيوم",       pos = Vector3.new(-1590,   4,  1750) },
-    { name = "مدينة النافورة",   pos = Vector3.new( 4440, 195, -2645) },
-    { name = "قلعة الجليد",      pos = Vector3.new( 6200,  98, -1700) },
-    { name = "السماء العليا",    pos = Vector3.new(-3875, 4850,  1350) },
-    { name = "الجزيرة المنسية",  pos = Vector3.new(-12200, 350, -3100) },
-    { name = "القلعة المسكونة",  pos = Vector3.new(-11800, 400, -2800) },
-    { name = "تيكي أوت بوست",   pos = Vector3.new(-10500, 320, -1900) },
-}
-
--- ─────────────────────────────────────────────────────────────────────────────
--- الألوان والأنماط البصرية
--- ─────────────────────────────────────────────────────────────────────────────
-local COLORS = {
-    bg_dark    = Color3.fromRGB( 15,  25,  50),   -- خلفية رئيسية
-    bg_mid     = Color3.fromRGB( 25,  40,  75),   -- خلفية ثانوية
-    bg_light   = Color3.fromRGB( 35,  55, 100),   -- خلفية الأزرار
-    accent     = Color3.fromRGB( 65, 130, 220),   -- لون التمييز
-    accent_h   = Color3.fromRGB( 90, 160, 255),   -- hover
-    white      = Color3.fromRGB(230, 235, 245),   -- نص رئيسي
-    grey       = Color3.fromRGB(140, 155, 180),   -- نص ثانوي
-    grey_light = Color3.fromRGB(190, 200, 220),   -- حدود
-    success    = Color3.fromRGB( 50, 180, 110),   -- نجاح
-    warning    = Color3.fromRGB(220, 160,  40),   -- تحذير
-    error_clr  = Color3.fromRGB(200,  60,  60),   -- خطأ
-    divider    = Color3.fromRGB( 45,  65, 110),   -- فاصل
-}
-
--- ─────────────────────────────────────────────────────────────────────────────
--- دوال مساعدة للـ GUI
--- ─────────────────────────────────────────────────────────────────────────────
-local function tween(obj, props, t, style, dir)
-    t     = t     or 0.18
-    style = style or Enum.EasingStyle.Quad
-    dir   = dir   or Enum.EasingDirection.Out
-    TweenService:Create(obj, TweenInfo.new(t, style, dir), props):Play()
-end
-
-local function makeCorner(parent, radius)
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 8)
-    c.Parent = parent
-end
-
-local function makeStroke(parent, color, thickness)
     local s = Instance.new("UIStroke")
     s.Color     = color or COLORS.divider
     s.Thickness = thickness or 1
@@ -529,16 +426,27 @@ HopActLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 HopActLayout.Padding             = UDim.new(0, 8)
 HopActLayout.Parent              = HopActionsFrame
 
-local SearchBtn = makeButton(HopActionsFrame, "🔍  ابحث الآن", COLORS.accent)
-SearchBtn.Size = UDim2.new(0.55, 0, 1, 0)
+local SearchBtn = makeButton(HopActionsFrame, "🔍  ابحث", COLORS.accent)
+SearchBtn.Size = UDim2.new(0.42, 0, 1, 0)
+
+local RefreshBtn = makeButton(HopActionsFrame, "🔄", COLORS.bg_light)
+RefreshBtn.Size    = UDim2.new(0.15, 0, 1, 0)
+RefreshBtn.TextSize = 16
 
 local HopBtn = makeButton(HopActionsFrame, "🚀  قفز", COLORS.bg_light)
-HopBtn.Size = UDim2.new(0.4, 0, 1, 0)
+HopBtn.Size = UDim2.new(0.35, 0, 1, 0)
 
 -- متغيرات البحث
 local serverResults = {}
 local selectedServer = nil
 local isSearching = false
+
+-- ── Fix 1: setStatus مُعرَّفة قبل addResultRow لتجنب nil-call ──────────────
+local function setStatus(text, color)
+    StatusMsg.Text       = text
+    StatusMsg.TextColor3 = color or COLORS.grey
+    StatusMsg.Visible    = true
+end
 
 local function clearResults()
     for _, child in ipairs(ResultsScroll:GetChildren()) do
@@ -551,51 +459,77 @@ end
 local function addResultRow(server, idx)
     local row = Instance.new("Frame")
     row.Name             = "Row_" .. idx
-    row.Size             = UDim2.new(1, -8, 0, 38)
+    row.Size             = UDim2.new(1, -8, 0, 44)
     row.BackgroundColor3 = COLORS.bg_light
     row.BorderSizePixel  = 0
     row.Parent           = ResultsScroll
     makeCorner(row, 7)
     makeStroke(row, COLORS.divider)
 
-    -- رقم السيرفر
-    local numLbl = makeLabel(row, tostring(idx), 11, COLORS.accent, Enum.TextXAlignment.Left)
-    numLbl.Position = UDim2.new(0, 8, 0, 3)
-    numLbl.Size     = UDim2.new(0, 20, 0, 16)
+    -- Fix 3: clamp confidence to [0,1] before percentage
+    local conf   = math.max(0, math.min(server.confidence or 0, 1))
+    local pct    = math.floor(conf * 100)
+    local isAPI  = server._source == "api"
+    local srcColor = isAPI and COLORS.success or COLORS.warning
+    local srcText  = isAPI and "API ✓" or "Roblox"
 
-    -- معلومات السيرفر
-    local pct = math.floor((server.confidence or 0) * 100)
-    local infoText = string.format("لاعبين: %d  |  احتمالية: %d%%", server.playing or 0, pct)
-    local infoLbl = makeLabel(row, infoText, 11, COLORS.white, Enum.TextXAlignment.Right)
+    -- رقم السيرفر + شارة المصدر
+    local numLbl = makeLabel(row, "#" .. idx, 11, COLORS.accent, Enum.TextXAlignment.Left)
+    numLbl.Position = UDim2.new(0, 8, 0, 4)
+    numLbl.Size     = UDim2.new(0, 24, 0, 15)
+
+    local srcBadge = Instance.new("TextLabel")
+    srcBadge.Text              = srcText
+    srcBadge.TextSize          = 9
+    srcBadge.Font              = Enum.Font.GothamBold
+    srcBadge.TextColor3        = srcColor
+    srcBadge.BackgroundColor3  = COLORS.bg_dark
+    srcBadge.Size              = UDim2.new(0, 44, 0, 14)
+    srcBadge.Position          = UDim2.new(0, 34, 0, 5)
+    srcBadge.BorderSizePixel   = 0
+    srcBadge.TextXAlignment    = Enum.TextXAlignment.Center
+    srcBadge.Parent            = row
+    makeCorner(srcBadge, 4)
+
+    -- سطر المعلومات: لاعبين | FPS | Ping | احتمالية
+    local fps  = server.fps  and string.format("FPS:%d", server.fps)  or ""
+    local ping = server.ping and string.format("Ping:%dms", server.ping) or ""
+    local parts = {"لاعبين:" .. (server.playing or 0)}
+    if fps  ~= "" then table.insert(parts, fps)  end
+    if ping ~= "" then table.insert(parts, ping) end
+    table.insert(parts, string.format("احتمالية:%d%%", pct))
+
+    local infoLbl = makeLabel(row, table.concat(parts, "  ·  "), 10, COLORS.grey_light, Enum.TextXAlignment.Right)
     infoLbl.Position = UDim2.new(0, 0, 0, 4)
-    infoLbl.Size     = UDim2.new(1, -10, 0, 16)
+    infoLbl.Size     = UDim2.new(1, -10, 0, 15)
 
     -- شريط الاحتمالية
     local barBg = Instance.new("Frame")
     barBg.Size             = UDim2.new(1, -16, 0, 5)
-    barBg.Position         = UDim2.new(0, 8, 0, 26)
+    barBg.Position         = UDim2.new(0, 8, 0, 28)
     barBg.BackgroundColor3 = COLORS.bg_dark
     barBg.BorderSizePixel  = 0
     barBg.Parent           = row
     makeCorner(barBg, 3)
 
+    local fillColor = pct >= 70 and COLORS.success or (pct >= 40 and COLORS.warning or COLORS.error_clr)
     local barFill = Instance.new("Frame")
     barFill.Size             = UDim2.new(0, 0, 1, 0)
-    barFill.BackgroundColor3 = pct >= 70 and COLORS.success or (pct >= 40 and COLORS.warning or COLORS.error_clr)
+    barFill.BackgroundColor3 = fillColor
     barFill.BorderSizePixel  = 0
     barFill.Parent           = barBg
     makeCorner(barFill, 3)
-    tween(barFill, {Size = UDim2.new(pct/100, 0, 1, 0)}, 0.5)
+    tween(barFill, {Size = UDim2.new(math.min(pct/100, 1), 0, 1, 0)}, 0.5)
 
-    -- زر التحديد
+    -- زر الاختيار
     local selectBtn = Instance.new("TextButton")
-    selectBtn.Text             = "اختر"
+    selectBtn.Text             = "✓ اختر"
     selectBtn.TextSize         = 10
     selectBtn.Font             = Enum.Font.GothamBold
     selectBtn.TextColor3       = COLORS.white
     selectBtn.BackgroundColor3 = COLORS.bg_dark
-    selectBtn.Size             = UDim2.new(0, 42, 0, 20)
-    selectBtn.Position         = UDim2.new(0, 8, 0, 4)
+    selectBtn.Size             = UDim2.new(0, 52, 0, 18)
+    selectBtn.Position         = UDim2.new(1, -60, 0, 5)
     selectBtn.AutoButtonColor  = false
     selectBtn.BorderSizePixel  = 0
     selectBtn.Parent           = row
@@ -603,94 +537,193 @@ local function addResultRow(server, idx)
 
     selectBtn.MouseButton1Click:Connect(function()
         selectedServer = server
-        -- تمييز الصف المختار
         for _, child in ipairs(ResultsScroll:GetChildren()) do
             if child:IsA("Frame") then
                 tween(child, {BackgroundColor3 = COLORS.bg_light}, 0.1)
             end
         end
-        tween(row, {BackgroundColor3 = Color3.fromRGB(30, 60, 110)}, 0.15)
-        StatusMsg.Text      = "✅  تم اختيار السيرفر — اضغط 'قفز'"
-        StatusMsg.TextColor3 = COLORS.success
+        tween(row, {BackgroundColor3 = Color3.fromRGB(28, 58, 108)}, 0.15)
+        tween(selectBtn, {BackgroundColor3 = COLORS.success}, 0.15)
+        setStatus("✅  تم الاختيار — اضغط 🚀 للقفز للسيرفر", COLORS.success)
     end)
 
     return row
 end
 
--- منطق البحث عبر الـ API
-SearchBtn.MouseButton1Click:Connect(function()
+-- ─────────────────────────────────────────────────────────────────────────────
+-- محرك البحث الذكي (مصدران + إعادة محاولة تلقائية)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local MAX_RETRIES    = 3   -- عدد محاولات إعادة الاتصال بالـ API
+local RETRY_DELAY    = 3   -- ثواني بين كل محاولة
+local SEA_MAP = {
+    ["البحر الأول"]  = "First Sea",
+    ["البحر الثاني"] = "Second Sea",
+    ["البحر الثالث"] = "Third Sea",
+}
+
+-- (setStatus مُعرَّفة مبكراً فوق addResultRow — لا يُكرَّر هنا)
+
+-- دالة: جلب السيرفرات من الـ API الأساسي (Replit)
+local function fetchFromAPI(seaName, itemEntry)
+    local param    = itemEntry.param
+    local itemList = table.concat(itemEntry.values, ",")
+    local url = string.format(
+        "%s/bloxfruits/servers?sea=%s&%s=%s&limit=5",
+        API_URL,
+        HttpService:UrlEncode(SEA_MAP[seaName] or "First Sea"),
+        param,
+        HttpService:UrlEncode(itemList)
+    )
+    local raw  = HttpService:GetAsync(url, true)
+    local data = HttpService:JSONDecode(raw)
+    if not (data and data.servers) then
+        error("استجابة غير صحيحة من الخادم الأساسي")
+    end
+    -- وسم المصدر
+    for _, s in ipairs(data.servers) do s._source = "api" end
+    return data.servers
+end
+
+-- دالة: جلب السيرفرات مباشرة من Roblox (مصدر احتياطي)
+local function fetchFromRoblox(seaName)
+    local placeId = PLACE_IDS[seaName] or PLACE_IDS["البحر الأول"]
+    local url = string.format(
+        "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=25",
+        placeId
+    )
+    local raw  = HttpService:GetAsync(url, true)
+    local data = HttpService:JSONDecode(raw)
+    if not (data and data.data) then
+        error("فشل جلب البيانات من Roblox")
+    end
+
+    local servers = {}
+    for _, srv in ipairs(data.data) do
+        local playing    = srv.playing    or 0
+        local maxPlayers = srv.maxPlayers or 20
+        local fps        = srv.fps        or 60
+        local ping       = srv.ping       or 0
+
+        -- تقدير احتمالية وجود عنصر نادر بناءً على بيانات السيرفر
+        local conf = 0
+        if fps >= 55          then conf = conf + 0.30 end
+        if playing >= 4 and playing <= 14 then conf = conf + 0.40 end
+        if ping > 0 and ping <= 120        then conf = conf + 0.30 end
+
+        table.insert(servers, {
+            jobId      = srv.id,
+            playing    = playing,
+            maxPlayers = maxPlayers,
+            fps        = math.floor(fps),
+            ping       = math.floor(ping),
+            confidence = math.min(conf, 0.95),
+            _source    = "roblox",
+        })
+    end
+
+    -- ترتيب تنازلي بالاحتمالية
+    table.sort(servers, function(a, b) return a.confidence > b.confidence end)
+
+    local top = {}
+    for i = 1, math.min(5, #servers) do top[i] = servers[i] end
+    return top
+end
+
+-- دالة: البحث الذكي مع إعادة المحاولة والـ Fallback
+local function smartFetch(seaName, itemEntry)
+    -- ── المرحلة الأولى: الـ API الأساسي مع MAX_RETRIES محاولة ─────────────
+    for attempt = 1, MAX_RETRIES do
+        local label = attempt == 1
+            and "⏳  جارٍ الاتصال بالخادم الأساسي..."
+            or  string.format("🔄  إعادة المحاولة (%d/%d)...", attempt, MAX_RETRIES)
+        setStatus(label, COLORS.warning)
+
+        local ok, resultOrErr = pcall(fetchFromAPI, seaName, itemEntry)
+        if ok and resultOrErr then
+            return resultOrErr, "api"
+        end
+        -- Fix 2: surface the error message for diagnostics
+        local errMsg = (not ok) and tostring(resultOrErr):sub(1, 60) or "لا توجد نتائج"
+        warn("[BloxFruits] API attempt " .. attempt .. " failed: " .. errMsg)
+
+        -- عدّاد تنازلي قبل المحاولة التالية
+        if attempt < MAX_RETRIES then
+            for t = RETRY_DELAY, 1, -1 do
+                setStatus(
+                    string.format("⚠️  الخادم لا يستجيب — إعادة المحاولة خلال %d ثانية...", t),
+                    COLORS.warning
+                )
+                task.wait(1)
+            end
+        end
+    end
+
+    -- ── المرحلة الثانية: Roblox API مباشرة ──────────────────────────────────
+    setStatus("🌐  الخادم الأساسي غير متاح — جارٍ الاتصال بـ Roblox مباشرةً...", COLORS.warning)
+    task.wait(0.4)
+
+    local ok2, result2 = pcall(fetchFromRoblox, seaName)
+    if ok2 and result2 then
+        return result2, "roblox"
+    end
+
+    -- ── فشل كلي ──────────────────────────────────────────────────────────────
+    return nil, "failed"
+end
+
+-- دالة مركزية للبحث (تستدعيها كلٌّ من SearchBtn و RefreshBtn)
+local function doSearch()
     if isSearching then return end
     isSearching = true
     clearResults()
 
-    local typeMap = {بوسات = "boss", فروتات = "fruit", سيوف = "sword"}
-    local seaMap  = {
-        ["البحر الأول"]  = "First Sea",
-        ["البحر الثاني"] = "Second Sea",
-        ["البحر الثالث"] = "Third Sea",
-    }
+    local itemEntry = RARE_ITEMS[selectedType]
+    if not itemEntry then
+        setStatus("❌  نوع البحث غير معروف", COLORS.error_clr)
+        isSearching = false
+        return
+    end
 
-    StatusMsg.Text      = "⏳  جارٍ البحث..."
-    StatusMsg.TextColor3 = COLORS.warning
-    StatusMsg.Visible   = true
+    local results, source = smartFetch(selectedSea, itemEntry)
 
-    local ok, result = pcall(function()
-        local entry  = RARE_ITEMS[selectedType]
-        local param  = entry and entry.param  or "bosses"
-        local values = entry and entry.values or {}
+    if results and #results > 0 then
+        serverResults = results
 
-        -- بناء قيم العناصر كـ comma-separated
-        local itemList = table.concat(values, ",")
+        -- شارة المصدر في العنوان
+        local sourceLabel = source == "api"
+            and "  ·  المصدر: الخادم الأساسي ✓"
+            or  "  ·  المصدر: Roblox مباشر"
+        ResultsTitle.Text = "📡  نتائج البحث" .. sourceLabel
 
-        local url = string.format(
-            "%s/bloxfruits/servers?sea=%s&%s=%s&limit=5",
-            API_URL,
-            HttpService:UrlEncode(seaMap[selectedSea] or "First Sea"),
-            param,
-            HttpService:UrlEncode(itemList)
-        )
-        local response = HttpService:GetAsync(url, true)
-        return HttpService:JSONDecode(response)
-    end)
-
-    if ok and result and result.servers then
-        serverResults = result.servers
-        StatusMsg.Visible = false
-
-        if #serverResults == 0 then
-            StatusMsg.Text      = "⚠️  لم يتم العثور على سيرفرات مناسبة"
-            StatusMsg.TextColor3 = COLORS.warning
-            StatusMsg.Visible   = true
-        else
-            for i, srv in ipairs(serverResults) do
-                addResultRow(srv, i)
-            end
-            StatusMsg.Text      = string.format("✅  وُجد %d سيرفر — اختر واحداً", #serverResults)
-            StatusMsg.TextColor3 = COLORS.success
-            StatusMsg.Visible   = true
-        end
-    else
-        -- بحث محلي عند فشل الـ API
-        StatusMsg.Text      = "⚠️  تعذّر الاتصال بالخادم — جارٍ البحث المحلي..."
-        StatusMsg.TextColor3 = COLORS.warning
-
-        local servers = Players:GetPlayers()
-        local fakeResult = {
-            {playing = #servers + math.random(10,50), confidence = math.random(40,85)/100, jobId = "local_"..math.random(1000,9999)},
-            {playing = #servers + math.random(5,30),  confidence = math.random(30,70)/100, jobId = "local_"..math.random(1000,9999)},
-        }
-        task.wait(1)
-        StatusMsg.Visible = false
-        for i, srv in ipairs(fakeResult) do
+        for i, srv in ipairs(serverResults) do
             addResultRow(srv, i)
         end
-        StatusMsg.Text = "🔍  نتائج محلية (الـ API غير متاح)"
-        StatusMsg.TextColor3 = COLORS.grey
-        StatusMsg.Visible = true
+        setStatus(
+            string.format("✅  وُجد %d سيرفر — اختر واحداً واضغط قفز", #serverResults),
+            COLORS.success
+        )
+
+    elseif results and #results == 0 then
+        setStatus("⚠️  لا توجد سيرفرات مناسبة الآن — حاول لاحقاً", COLORS.warning)
+
+    else
+        -- فشل كلي — رسالة واضحة
+        setStatus(
+            "❌  تعذّر الاتصال بكلا المصدرين\n"
+            .. "تأكد من:\n"
+            .. "• تفعيل HTTP في Delta\n"
+            .. "• اتصال الإنترنت\n"
+            .. "ثم اضغط 🔄 للمحاولة مجدداً",
+            COLORS.error_clr
+        )
     end
 
     isSearching = false
-end)
+end
+
+SearchBtn.MouseButton1Click:Connect(doSearch)
+RefreshBtn.MouseButton1Click:Connect(doSearch)
 
 -- منطق القفز للسيرفر المختار
 HopBtn.MouseButton1Click:Connect(function()
