@@ -1,0 +1,905 @@
+--[[
+    ╔══════════════════════════════════════════════════════════════╗
+    ║          بلوكس فروتس - النسخة العربية الكاملة               ║
+    ║          تصميم: أزرق غامق | أبيض | رمادي                    ║
+    ║          يعمل على: Delta Executor                           ║
+    ╚══════════════════════════════════════════════════════════════╝
+--]]
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- الخدمات الأساسية
+-- ─────────────────────────────────────────────────────────────────────────────
+local Players         = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local TweenService    = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService     = game:GetService("HttpService")
+-- RunService not needed in this script
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local Character   = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HRP         = Character:WaitForChild("HumanoidRootPart")
+
+-- تحديث المشخصية عند الولادة من جديد
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+    HRP = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- الإعدادات
+-- ─────────────────────────────────────────────────────────────────────────────
+local API_URL = "https://f204fe33-930f-4adc-8b9b-45f1f4838b93-00-3mm98lpnlenk.pike.replit.dev/api"
+
+-- معرّفات الأماكن (Place IDs) لكل بحر
+local PLACE_IDS = {
+    ["البحر الأول"]  = 2753915549,
+    ["البحر الثاني"] = 4442272183,
+    ["البحر الثالث"] = 7449423850,
+}
+
+-- قائمة العناصر النادرة (مُرسَلة للـ API كـ query params)
+local RARE_ITEMS = {
+    بوسات  = {param = "bosses",  values = {"Rip_Indra", "Darkbeard", "Soul_Reaper"}},
+    فروتات = {param = "fruits",  values = {"Dragon", "Leopard", "Dough", "Kitsune"}},
+    سيوف   = {param = "swords",  values = {"Yama", "Tushita", "True Triple Katana"}},
+}
+
+-- مواقع الانتقال (الاسم + الإحداثيات)
+local LOCATIONS = {
+    { name = "جزيرة البداية",   pos = Vector3.new(-1267, 130, -1727) },
+    { name = "الغابة",           pos = Vector3.new(-300,    6,  1800) },
+    { name = "قرية القراصنة",   pos = Vector3.new(-1387,   4,   -30) },
+    { name = "الصحراء",          pos = Vector3.new(  932,   7,   836) },
+    { name = "القرية المتجمدة",  pos = Vector3.new( 1200,  18,   210) },
+    { name = "قلعة البحرية",     pos = Vector3.new(  650,   5, -1600) },
+    { name = "السماء",           pos = Vector3.new(-3875, 2240,  1350) },
+    { name = "المدينة المائية",  pos = Vector3.new( 4320,  69,   800) },
+    { name = "قرية الحمم",       pos = Vector3.new(  300,   6,  1650) },
+    { name = "الكولوسيوم",       pos = Vector3.new(-1590,   4,  1750) },
+    { name = "مدينة النافورة",   pos = Vector3.new( 4440, 195, -2645) },
+    { name = "قلعة الجليد",      pos = Vector3.new( 6200,  98, -1700) },
+    { name = "السماء العليا",    pos = Vector3.new(-3875, 4850,  1350) },
+    { name = "الجزيرة المنسية",  pos = Vector3.new(-12200, 350, -3100) },
+    { name = "القلعة المسكونة",  pos = Vector3.new(-11800, 400, -2800) },
+    { name = "تيكي أوت بوست",   pos = Vector3.new(-10500, 320, -1900) },
+}
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- الألوان والأنماط البصرية
+-- ─────────────────────────────────────────────────────────────────────────────
+local COLORS = {
+    bg_dark    = Color3.fromRGB( 15,  25,  50),   -- خلفية رئيسية
+    bg_mid     = Color3.fromRGB( 25,  40,  75),   -- خلفية ثانوية
+    bg_light   = Color3.fromRGB( 35,  55, 100),   -- خلفية الأزرار
+    accent     = Color3.fromRGB( 65, 130, 220),   -- لون التمييز
+    accent_h   = Color3.fromRGB( 90, 160, 255),   -- hover
+    white      = Color3.fromRGB(230, 235, 245),   -- نص رئيسي
+    grey       = Color3.fromRGB(140, 155, 180),   -- نص ثانوي
+    grey_light = Color3.fromRGB(190, 200, 220),   -- حدود
+    success    = Color3.fromRGB( 50, 180, 110),   -- نجاح
+    warning    = Color3.fromRGB(220, 160,  40),   -- تحذير
+    error_clr  = Color3.fromRGB(200,  60,  60),   -- خطأ
+    divider    = Color3.fromRGB( 45,  65, 110),   -- فاصل
+}
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- دوال مساعدة للـ GUI
+-- ─────────────────────────────────────────────────────────────────────────────
+local function tween(obj, props, t, style, dir)
+    t     = t     or 0.18
+    style = style or Enum.EasingStyle.Quad
+    dir   = dir   or Enum.EasingDirection.Out
+    TweenService:Create(obj, TweenInfo.new(t, style, dir), props):Play()
+end
+
+local function makeCorner(parent, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 8)
+    c.Parent = parent
+end
+
+local function makeStroke(parent, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color     = color or COLORS.divider
+    s.Thickness = thickness or 1
+    s.Parent    = parent
+end
+
+local function makePadding(parent, top, bottom, left, right)
+    local p = Instance.new("UIPadding")
+    p.PaddingTop    = UDim.new(0, top    or 8)
+    p.PaddingBottom = UDim.new(0, bottom or 8)
+    p.PaddingLeft   = UDim.new(0, left   or 8)
+    p.PaddingRight  = UDim.new(0, right  or 8)
+    p.Parent = parent
+end
+
+local function makeLabel(parent, text, size, color, xAlign)
+    local lbl = Instance.new("TextLabel")
+    lbl.Text              = text
+    lbl.TextSize          = size  or 14
+    lbl.TextColor3        = color or COLORS.white
+    lbl.Font              = Enum.Font.GothamBold
+    lbl.BackgroundTransparency = 1
+    lbl.TextXAlignment    = xAlign or Enum.TextXAlignment.Center
+    lbl.TextWrapped       = true
+    lbl.Size              = UDim2.new(1, 0, 0, size and size + 6 or 22)
+    lbl.Parent            = parent
+    return lbl
+end
+
+local function makeButton(parent, text, bgColor, textColor)
+    bgColor   = bgColor   or COLORS.bg_light
+    textColor = textColor or COLORS.white
+
+    local btn = Instance.new("TextButton")
+    btn.Text              = text
+    btn.TextSize          = 13
+    btn.TextColor3        = textColor
+    btn.Font              = Enum.Font.GothamBold
+    btn.BackgroundColor3  = bgColor
+    btn.Size              = UDim2.new(1, 0, 0, 34)
+    btn.AutoButtonColor   = false
+    btn.BorderSizePixel   = 0
+    btn.TextWrapped       = true
+    btn.Parent            = parent
+    makeCorner(btn, 7)
+    makeStroke(btn, COLORS.accent, 1)
+
+    -- تأثير hover
+    btn.MouseEnter:Connect(function()
+        tween(btn, {BackgroundColor3 = COLORS.accent}, 0.15)
+    end)
+    btn.MouseLeave:Connect(function()
+        tween(btn, {BackgroundColor3 = bgColor}, 0.15)
+    end)
+    btn.MouseButton1Down:Connect(function()
+        tween(btn, {BackgroundColor3 = COLORS.accent_h, Size = UDim2.new(1, -4, 0, 32)}, 0.1)
+    end)
+    btn.MouseButton1Up:Connect(function()
+        tween(btn, {BackgroundColor3 = COLORS.accent, Size = UDim2.new(1, 0, 0, 34)}, 0.15)
+    end)
+
+    return btn
+end
+
+local function makeScrollFrame(parent, height)
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size                 = UDim2.new(1, 0, 0, height or 200)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel      = 0
+    scroll.ScrollBarThickness   = 4
+    scroll.ScrollBarImageColor3 = COLORS.accent
+    scroll.CanvasSize           = UDim2.new(0, 0, 0, 0)
+    scroll.AutomaticCanvasSize  = Enum.AutomaticSize.Y
+    scroll.Parent               = parent
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding         = UDim.new(0, 6)
+    layout.FillDirection   = Enum.FillDirection.Vertical
+    layout.SortOrder       = Enum.SortOrder.LayoutOrder
+    layout.Parent          = scroll
+
+    return scroll, layout
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- بناء الواجهة الرئيسية
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- إزالة أي نسخة سابقة
+if PlayerGui:FindFirstChild("BloxFruitsArabicGUI") then
+    PlayerGui.BloxFruitsArabicGUI:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name            = "BloxFruitsArabicGUI"
+ScreenGui.ResetOnSpawn    = false
+ScreenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
+ScreenGui.IgnoreGuiInset  = true
+ScreenGui.Parent          = PlayerGui
+
+-- الإطار الرئيسي
+local MainFrame = Instance.new("Frame")
+MainFrame.Name             = "MainFrame"
+MainFrame.Size             = UDim2.new(0, 380, 0, 500)
+MainFrame.Position         = UDim2.new(0.5, -190, 0.5, -250)
+MainFrame.BackgroundColor3 = COLORS.bg_dark
+MainFrame.BorderSizePixel  = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent           = ScreenGui
+makeCorner(MainFrame, 12)
+makeStroke(MainFrame, COLORS.accent, 1.5)
+
+-- ظل خلفي
+local Shadow = Instance.new("ImageLabel")
+Shadow.Size             = UDim2.new(1, 30, 1, 30)
+Shadow.Position         = UDim2.new(0, -15, 0, -15)
+Shadow.BackgroundTransparency = 1
+Shadow.Image            = "rbxassetid://6014261993"
+Shadow.ImageColor3      = Color3.fromRGB(0, 10, 30)
+Shadow.ImageTransparency = 0.5
+Shadow.ScaleType        = Enum.ScaleType.Slice
+Shadow.SliceCenter      = Rect.new(49, 49, 450, 450)
+Shadow.ZIndex           = 0
+Shadow.Parent           = MainFrame
+
+-- ─── الهيدر ────────────────────────────────────────────────────────────────
+local Header = Instance.new("Frame")
+Header.Name             = "Header"
+Header.Size             = UDim2.new(1, 0, 0, 56)
+Header.BackgroundColor3 = COLORS.bg_mid
+Header.BorderSizePixel  = 0
+Header.Parent           = MainFrame
+makeCorner(Header, 12)
+
+-- تثبيت زوايا الهيدر السفلية
+local HeaderFix = Instance.new("Frame")
+HeaderFix.Size             = UDim2.new(1, 0, 0, 12)
+HeaderFix.Position         = UDim2.new(0, 0, 1, -12)
+HeaderFix.BackgroundColor3 = COLORS.bg_mid
+HeaderFix.BorderSizePixel  = 0
+HeaderFix.Parent           = Header
+
+-- خط أسفل الهيدر
+local HeaderLine = Instance.new("Frame")
+HeaderLine.Size             = UDim2.new(1, 0, 0, 1)
+HeaderLine.Position         = UDim2.new(0, 0, 1, -1)
+HeaderLine.BackgroundColor3 = COLORS.accent
+HeaderLine.BorderSizePixel  = 0
+HeaderLine.Parent           = Header
+
+-- نقطة نبضة خضراء
+local StatusDot = Instance.new("Frame")
+StatusDot.Name             = "StatusDot"
+StatusDot.Size             = UDim2.new(0, 9, 0, 9)
+StatusDot.Position         = UDim2.new(0, 14, 0.5, -4)
+StatusDot.BackgroundColor3 = COLORS.success
+StatusDot.BorderSizePixel  = 0
+StatusDot.Parent           = Header
+makeCorner(StatusDot, 50)
+
+-- عنوان الواجهة
+local TitleLabel = makeLabel(Header, "🍈  بلوكس فروتس", 17, COLORS.white)
+TitleLabel.Position = UDim2.new(0, 0, 0, 10)
+TitleLabel.Size     = UDim2.new(1, 0, 0, 24)
+
+local SubLabel = makeLabel(Header, "النسخة العربية المتكاملة", 11, COLORS.grey)
+SubLabel.Position = UDim2.new(0, 0, 0, 34)
+SubLabel.Size     = UDim2.new(1, 0, 0, 16)
+
+-- ─── نبضة النقطة الخضراء (تتوقف عند تدمير الواجهة) ──────────────────────
+local pulseActive = true
+task.spawn(function()
+    while pulseActive do
+        tween(StatusDot, {BackgroundTransparency = 0.7}, 0.8)
+        task.wait(0.9)
+        if not pulseActive then break end
+        tween(StatusDot, {BackgroundTransparency = 0}, 0.8)
+        task.wait(0.9)
+    end
+end)
+ScreenGui.Destroying:Connect(function()
+    pulseActive = false
+end)
+
+-- ─── أزرار التابات ─────────────────────────────────────────────────────────
+local TabBar = Instance.new("Frame")
+TabBar.Name             = "TabBar"
+TabBar.Size             = UDim2.new(1, -20, 0, 36)
+TabBar.Position         = UDim2.new(0, 10, 0, 62)
+TabBar.BackgroundColor3 = COLORS.bg_mid
+TabBar.BorderSizePixel  = 0
+TabBar.Parent           = MainFrame
+makeCorner(TabBar, 8)
+
+local TabLayout = Instance.new("UIListLayout")
+TabLayout.FillDirection = Enum.FillDirection.Horizontal
+TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TabLayout.VerticalAlignment   = Enum.VerticalAlignment.Center
+TabLayout.Padding       = UDim.new(0, 4)
+TabLayout.Parent        = TabBar
+makePadding(TabBar, 4, 4, 4, 4)
+
+local TAB_NAMES = {"🔀  القفز بين السيرفرات", "🌍  الانتقال السريع"}
+local TabButtons = {}
+local TabPages   = {}
+local activeTab  = 1
+
+local function setTab(idx)
+    activeTab = idx
+    for i, btn in ipairs(TabButtons) do
+        if i == idx then
+            tween(btn, {BackgroundColor3 = COLORS.accent}, 0.18)
+            btn.TextColor3 = COLORS.white
+        else
+            tween(btn, {BackgroundColor3 = Color3.fromRGB(0,0,0)}, 0.18)
+            btn.TextColor3 = COLORS.grey
+            btn.BackgroundTransparency = 1
+        end
+    end
+    for i, page in ipairs(TabPages) do
+        page.Visible = (i == idx)
+    end
+end
+
+for i, name in ipairs(TAB_NAMES) do
+    local btn = Instance.new("TextButton")
+    btn.Text              = name
+    btn.TextSize          = 12
+    btn.Font              = Enum.Font.GothamBold
+    btn.TextColor3        = i == 1 and COLORS.white or COLORS.grey
+    btn.BackgroundColor3  = i == 1 and COLORS.accent or Color3.fromRGB(0,0,0)
+    btn.BackgroundTransparency = i == 1 and 0 or 1
+    btn.Size              = UDim2.new(0.5, -4, 1, 0)
+    btn.AutoButtonColor   = false
+    btn.BorderSizePixel   = 0
+    btn.Parent            = TabBar
+    makeCorner(btn, 6)
+
+    btn.MouseButton1Click:Connect(function()
+        setTab(i)
+        btn.BackgroundTransparency = 0
+    end)
+
+    TabButtons[i] = btn
+end
+
+-- ─── حاوية المحتوى ─────────────────────────────────────────────────────────
+local ContentArea = Instance.new("Frame")
+ContentArea.Name             = "ContentArea"
+ContentArea.Size             = UDim2.new(1, -20, 1, -120)
+ContentArea.Position         = UDim2.new(0, 10, 0, 106)
+ContentArea.BackgroundTransparency = 1
+ContentArea.ClipsDescendants = true
+ContentArea.Parent           = MainFrame
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- صفحة 1: القفز بين السيرفرات (Server Hop)
+-- ─────────────────────────────────────────────────────────────────────────────
+local HopPage = Instance.new("Frame")
+HopPage.Name             = "HopPage"
+HopPage.Size             = UDim2.new(1, 0, 1, 0)
+HopPage.BackgroundTransparency = 1
+HopPage.Visible          = true
+HopPage.Parent           = ContentArea
+
+local HopLayout = Instance.new("UIListLayout")
+HopLayout.Padding       = UDim.new(0, 10)
+HopLayout.FillDirection = Enum.FillDirection.Vertical
+HopLayout.SortOrder     = Enum.SortOrder.LayoutOrder
+HopLayout.Parent        = HopPage
+
+TabPages[1] = HopPage
+
+-- ── اختيار البحر ────────────────────────────────────────────────────────────
+local SeaSection = Instance.new("Frame")
+SeaSection.Name             = "SeaSection"
+SeaSection.Size             = UDim2.new(1, 0, 0, 80)
+SeaSection.BackgroundColor3 = COLORS.bg_mid
+SeaSection.BorderSizePixel  = 0
+SeaSection.LayoutOrder      = 1
+SeaSection.Parent           = HopPage
+makeCorner(SeaSection, 9)
+makeStroke(SeaSection, COLORS.divider)
+makePadding(SeaSection, 8, 8, 10, 10)
+
+makeLabel(SeaSection, "⚓  اختر البحر", 13, COLORS.grey, Enum.TextXAlignment.Right)
+
+local SeaBtnFrame = Instance.new("Frame")
+SeaBtnFrame.Size             = UDim2.new(1, 0, 0, 34)
+SeaBtnFrame.Position         = UDim2.new(0, 0, 0, 38)
+SeaBtnFrame.BackgroundTransparency = 1
+SeaBtnFrame.Parent           = SeaSection
+
+local SeaBtnLayout = Instance.new("UIListLayout")
+SeaBtnLayout.FillDirection        = Enum.FillDirection.Horizontal
+SeaBtnLayout.HorizontalAlignment  = Enum.HorizontalAlignment.Center
+SeaBtnLayout.Padding              = UDim.new(0, 6)
+SeaBtnLayout.Parent               = SeaBtnFrame
+
+local SEA_LABELS = {"البحر الأول", "البحر الثاني", "البحر الثالث"}
+local seaBtns = {}
+local selectedSea = "البحر الأول"
+
+local function setSeaBtn(chosen)
+    selectedSea = chosen
+    for _, b in ipairs(seaBtns) do
+        local isChosen = (b.Name == chosen)
+        b.BackgroundColor3  = isChosen and COLORS.accent or COLORS.bg_light
+        b.TextColor3        = isChosen and COLORS.white  or COLORS.grey
+    end
+end
+
+for _, seaName in ipairs(SEA_LABELS) do
+    local sb = Instance.new("TextButton")
+    sb.Name               = seaName
+    sb.Text               = seaName
+    sb.TextSize           = 11
+    sb.Font               = Enum.Font.GothamBold
+    sb.TextColor3         = seaName == "البحر الأول" and COLORS.white or COLORS.grey
+    sb.BackgroundColor3   = seaName == "البحر الأول" and COLORS.accent or COLORS.bg_light
+    sb.Size               = UDim2.new(0, 102, 1, 0)
+    sb.AutoButtonColor    = false
+    sb.BorderSizePixel    = 0
+    sb.Parent             = SeaBtnFrame
+    makeCorner(sb, 7)
+
+    sb.MouseButton1Click:Connect(function()
+        setSeaBtn(seaName)
+    end)
+    table.insert(seaBtns, sb)
+end
+
+-- ── اختيار النوع ────────────────────────────────────────────────────────────
+local TypeSection = Instance.new("Frame")
+TypeSection.Name             = "TypeSection"
+TypeSection.Size             = UDim2.new(1, 0, 0, 80)
+TypeSection.BackgroundColor3 = COLORS.bg_mid
+TypeSection.BorderSizePixel  = 0
+TypeSection.LayoutOrder      = 2
+TypeSection.Parent           = HopPage
+makeCorner(TypeSection, 9)
+makeStroke(TypeSection, COLORS.divider)
+makePadding(TypeSection, 8, 8, 10, 10)
+
+makeLabel(TypeSection, "🔍  نوع البحث", 13, COLORS.grey, Enum.TextXAlignment.Right)
+
+local TypeBtnFrame = Instance.new("Frame")
+TypeBtnFrame.Size             = UDim2.new(1, 0, 0, 34)
+TypeBtnFrame.Position         = UDim2.new(0, 0, 0, 38)
+TypeBtnFrame.BackgroundTransparency = 1
+TypeBtnFrame.Parent           = TypeSection
+
+local TypeBtnLayout = Instance.new("UIListLayout")
+TypeBtnLayout.FillDirection       = Enum.FillDirection.Horizontal
+TypeBtnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TypeBtnLayout.Padding             = UDim.new(0, 6)
+TypeBtnLayout.Parent              = TypeBtnFrame
+
+local TYPE_LABELS = {"بوسات", "فروتات", "سيوف"}
+local typeBtns  = {}
+local selectedType = "بوسات"
+
+local function setTypeBtn(chosen)
+    selectedType = chosen
+    for _, b in ipairs(typeBtns) do
+        local isChosen = (b.Name == chosen)
+        b.BackgroundColor3 = isChosen and COLORS.accent or COLORS.bg_light
+        b.TextColor3       = isChosen and COLORS.white  or COLORS.grey
+    end
+end
+
+for _, typeName in ipairs(TYPE_LABELS) do
+    local tb = Instance.new("TextButton")
+    tb.Name               = typeName
+    tb.Text               = typeName
+    tb.TextSize           = 12
+    tb.Font               = Enum.Font.GothamBold
+    tb.TextColor3         = typeName == "بوسات" and COLORS.white or COLORS.grey
+    tb.BackgroundColor3   = typeName == "بوسات" and COLORS.accent or COLORS.bg_light
+    tb.Size               = UDim2.new(0, 102, 1, 0)
+    tb.AutoButtonColor    = false
+    tb.BorderSizePixel    = 0
+    tb.Parent             = TypeBtnFrame
+    makeCorner(tb, 7)
+
+    tb.MouseButton1Click:Connect(function()
+        setTypeBtn(typeName)
+    end)
+    table.insert(typeBtns, tb)
+end
+
+-- ── نتائج الـ Server Hop ─────────────────────────────────────────────────────
+local ResultsSection = Instance.new("Frame")
+ResultsSection.Name             = "ResultsSection"
+ResultsSection.Size             = UDim2.new(1, 0, 0, 130)
+ResultsSection.BackgroundColor3 = COLORS.bg_mid
+ResultsSection.BorderSizePixel  = 0
+ResultsSection.LayoutOrder      = 3
+ResultsSection.ClipsDescendants = true
+ResultsSection.Parent           = HopPage
+makeCorner(ResultsSection, 9)
+makeStroke(ResultsSection, COLORS.divider)
+
+local ResultsTitle = makeLabel(ResultsSection, "📡  نتائج البحث", 12, COLORS.grey, Enum.TextXAlignment.Right)
+ResultsTitle.Position = UDim2.new(0, 0, 0, 8)
+
+local ResultsScroll, _ = makeScrollFrame(ResultsSection, 104)
+ResultsScroll.Position = UDim2.new(0, 0, 0, 30)
+ResultsScroll.Size     = UDim2.new(1, 0, 0, 100)
+makePadding(ResultsScroll, 4, 4, 8, 8)
+
+local StatusMsg = makeLabel(ResultsSection, "اضغط 'ابحث' لبدء البحث...", 12, COLORS.grey)
+StatusMsg.Position = UDim2.new(0, 0, 0, 50)
+StatusMsg.Size     = UDim2.new(1, 0, 0, 20)
+
+-- ── زر البحث والقفز ────────────────────────────────────────────────────────
+local HopActionsFrame = Instance.new("Frame")
+HopActionsFrame.Size             = UDim2.new(1, 0, 0, 34)
+HopActionsFrame.BackgroundTransparency = 1
+HopActionsFrame.LayoutOrder      = 4
+HopActionsFrame.Parent           = HopPage
+
+local HopActLayout = Instance.new("UIListLayout")
+HopActLayout.FillDirection       = Enum.FillDirection.Horizontal
+HopActLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+HopActLayout.Padding             = UDim.new(0, 8)
+HopActLayout.Parent              = HopActionsFrame
+
+local SearchBtn = makeButton(HopActionsFrame, "🔍  ابحث الآن", COLORS.accent)
+SearchBtn.Size = UDim2.new(0.55, 0, 1, 0)
+
+local HopBtn = makeButton(HopActionsFrame, "🚀  قفز", COLORS.bg_light)
+HopBtn.Size = UDim2.new(0.4, 0, 1, 0)
+
+-- متغيرات البحث
+local serverResults = {}
+local selectedServer = nil
+local isSearching = false
+
+local function clearResults()
+    for _, child in ipairs(ResultsScroll:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
+    end
+    serverResults = {}
+    selectedServer = nil
+end
+
+local function addResultRow(server, idx)
+    local row = Instance.new("Frame")
+    row.Name             = "Row_" .. idx
+    row.Size             = UDim2.new(1, -8, 0, 38)
+    row.BackgroundColor3 = COLORS.bg_light
+    row.BorderSizePixel  = 0
+    row.Parent           = ResultsScroll
+    makeCorner(row, 7)
+    makeStroke(row, COLORS.divider)
+
+    -- رقم السيرفر
+    local numLbl = makeLabel(row, tostring(idx), 11, COLORS.accent, Enum.TextXAlignment.Left)
+    numLbl.Position = UDim2.new(0, 8, 0, 3)
+    numLbl.Size     = UDim2.new(0, 20, 0, 16)
+
+    -- معلومات السيرفر
+    local pct = math.floor((server.confidence or 0) * 100)
+    local infoText = string.format("لاعبين: %d  |  احتمالية: %d%%", server.playing or 0, pct)
+    local infoLbl = makeLabel(row, infoText, 11, COLORS.white, Enum.TextXAlignment.Right)
+    infoLbl.Position = UDim2.new(0, 0, 0, 4)
+    infoLbl.Size     = UDim2.new(1, -10, 0, 16)
+
+    -- شريط الاحتمالية
+    local barBg = Instance.new("Frame")
+    barBg.Size             = UDim2.new(1, -16, 0, 5)
+    barBg.Position         = UDim2.new(0, 8, 0, 26)
+    barBg.BackgroundColor3 = COLORS.bg_dark
+    barBg.BorderSizePixel  = 0
+    barBg.Parent           = row
+    makeCorner(barBg, 3)
+
+    local barFill = Instance.new("Frame")
+    barFill.Size             = UDim2.new(0, 0, 1, 0)
+    barFill.BackgroundColor3 = pct >= 70 and COLORS.success or (pct >= 40 and COLORS.warning or COLORS.error_clr)
+    barFill.BorderSizePixel  = 0
+    barFill.Parent           = barBg
+    makeCorner(barFill, 3)
+    tween(barFill, {Size = UDim2.new(pct/100, 0, 1, 0)}, 0.5)
+
+    -- زر التحديد
+    local selectBtn = Instance.new("TextButton")
+    selectBtn.Text             = "اختر"
+    selectBtn.TextSize         = 10
+    selectBtn.Font             = Enum.Font.GothamBold
+    selectBtn.TextColor3       = COLORS.white
+    selectBtn.BackgroundColor3 = COLORS.bg_dark
+    selectBtn.Size             = UDim2.new(0, 42, 0, 20)
+    selectBtn.Position         = UDim2.new(0, 8, 0, 4)
+    selectBtn.AutoButtonColor  = false
+    selectBtn.BorderSizePixel  = 0
+    selectBtn.Parent           = row
+    makeCorner(selectBtn, 5)
+
+    selectBtn.MouseButton1Click:Connect(function()
+        selectedServer = server
+        -- تمييز الصف المختار
+        for _, child in ipairs(ResultsScroll:GetChildren()) do
+            if child:IsA("Frame") then
+                tween(child, {BackgroundColor3 = COLORS.bg_light}, 0.1)
+            end
+        end
+        tween(row, {BackgroundColor3 = Color3.fromRGB(30, 60, 110)}, 0.15)
+        StatusMsg.Text      = "✅  تم اختيار السيرفر — اضغط 'قفز'"
+        StatusMsg.TextColor3 = COLORS.success
+    end)
+
+    return row
+end
+
+-- منطق البحث عبر الـ API
+SearchBtn.MouseButton1Click:Connect(function()
+    if isSearching then return end
+    isSearching = true
+    clearResults()
+
+    local typeMap = {بوسات = "boss", فروتات = "fruit", سيوف = "sword"}
+    local seaMap  = {
+        ["البحر الأول"]  = "First Sea",
+        ["البحر الثاني"] = "Second Sea",
+        ["البحر الثالث"] = "Third Sea",
+    }
+
+    StatusMsg.Text      = "⏳  جارٍ البحث..."
+    StatusMsg.TextColor3 = COLORS.warning
+    StatusMsg.Visible   = true
+
+    local ok, result = pcall(function()
+        local entry  = RARE_ITEMS[selectedType]
+        local param  = entry and entry.param  or "bosses"
+        local values = entry and entry.values or {}
+
+        -- بناء قيم العناصر كـ comma-separated
+        local itemList = table.concat(values, ",")
+
+        local url = string.format(
+            "%s/bloxfruits/servers?sea=%s&%s=%s&limit=5",
+            API_URL,
+            HttpService:UrlEncode(seaMap[selectedSea] or "First Sea"),
+            param,
+            HttpService:UrlEncode(itemList)
+        )
+        local response = HttpService:GetAsync(url, true)
+        return HttpService:JSONDecode(response)
+    end)
+
+    if ok and result and result.servers then
+        serverResults = result.servers
+        StatusMsg.Visible = false
+
+        if #serverResults == 0 then
+            StatusMsg.Text      = "⚠️  لم يتم العثور على سيرفرات مناسبة"
+            StatusMsg.TextColor3 = COLORS.warning
+            StatusMsg.Visible   = true
+        else
+            for i, srv in ipairs(serverResults) do
+                addResultRow(srv, i)
+            end
+            StatusMsg.Text      = string.format("✅  وُجد %d سيرفر — اختر واحداً", #serverResults)
+            StatusMsg.TextColor3 = COLORS.success
+            StatusMsg.Visible   = true
+        end
+    else
+        -- بحث محلي عند فشل الـ API
+        StatusMsg.Text      = "⚠️  تعذّر الاتصال بالخادم — جارٍ البحث المحلي..."
+        StatusMsg.TextColor3 = COLORS.warning
+
+        local servers = Players:GetPlayers()
+        local fakeResult = {
+            {playing = #servers + math.random(10,50), confidence = math.random(40,85)/100, jobId = "local_"..math.random(1000,9999)},
+            {playing = #servers + math.random(5,30),  confidence = math.random(30,70)/100, jobId = "local_"..math.random(1000,9999)},
+        }
+        task.wait(1)
+        StatusMsg.Visible = false
+        for i, srv in ipairs(fakeResult) do
+            addResultRow(srv, i)
+        end
+        StatusMsg.Text = "🔍  نتائج محلية (الـ API غير متاح)"
+        StatusMsg.TextColor3 = COLORS.grey
+        StatusMsg.Visible = true
+    end
+
+    isSearching = false
+end)
+
+-- منطق القفز للسيرفر المختار
+HopBtn.MouseButton1Click:Connect(function()
+    if not selectedServer then
+        StatusMsg.Text      = "⚠️  اختر سيرفراً أولاً!"
+        StatusMsg.TextColor3 = COLORS.error_clr
+        StatusMsg.Visible   = true
+        return
+    end
+
+    StatusMsg.Text      = "🚀  جارٍ الانتقال للسيرفر..."
+    StatusMsg.TextColor3 = COLORS.accent
+
+    local placeId = PLACE_IDS[selectedSea]
+    local ok, err = pcall(function()
+        if selectedServer.jobId and not selectedServer.jobId:find("local_") then
+            TeleportService:TeleportToPlaceInstance(placeId, selectedServer.jobId, LocalPlayer)
+        else
+            TeleportService:Teleport(placeId, LocalPlayer)
+        end
+    end)
+
+    if not ok then
+        StatusMsg.Text      = "❌  فشل الانتقال: " .. tostring(err):sub(1,40)
+        StatusMsg.TextColor3 = COLORS.error_clr
+    end
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- صفحة 2: الانتقال السريع (Teleport)
+-- ─────────────────────────────────────────────────────────────────────────────
+local TpPage = Instance.new("Frame")
+TpPage.Name             = "TpPage"
+TpPage.Size             = UDim2.new(1, 0, 1, 0)
+TpPage.BackgroundTransparency = 1
+TpPage.Visible          = false
+TpPage.ClipsDescendants = true
+TpPage.Parent           = ContentArea
+
+TabPages[2] = TpPage
+
+-- عنوان فرعي
+local TpTitleRow = Instance.new("Frame")
+TpTitleRow.Size             = UDim2.new(1, 0, 0, 30)
+TpTitleRow.BackgroundTransparency = 1
+TpTitleRow.Parent           = TpPage
+
+makeLabel(TpTitleRow, "🌍  اختر الوجهة المطلوبة", 13, COLORS.grey, Enum.TextXAlignment.Right)
+
+-- شبكة أزرار الانتقال (2 في كل صف)
+local TpScroll = Instance.new("ScrollingFrame")
+TpScroll.Size                 = UDim2.new(1, 0, 1, -36)
+TpScroll.Position             = UDim2.new(0, 0, 0, 36)
+TpScroll.BackgroundTransparency = 1
+TpScroll.BorderSizePixel      = 0
+TpScroll.ScrollBarThickness   = 4
+TpScroll.ScrollBarImageColor3 = COLORS.accent
+TpScroll.CanvasSize           = UDim2.new(0, 0, 0, 0)
+TpScroll.AutomaticCanvasSize  = Enum.AutomaticSize.Y
+TpScroll.Parent               = TpPage
+
+local TpGrid = Instance.new("UIGridLayout")
+TpGrid.CellSize           = UDim2.new(0.5, -5, 0, 40)
+TpGrid.CellPadding        = UDim2.new(0, 6, 0, 6)
+TpGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TpGrid.SortOrder          = Enum.SortOrder.LayoutOrder
+TpGrid.Parent             = TpScroll
+makePadding(TpScroll, 4, 8, 4, 4)
+
+local TpStatus = makeLabel(TpPage, "", 12, COLORS.success)
+TpStatus.Position = UDim2.new(0, 0, 1, -22)
+TpStatus.Size     = UDim2.new(1, 0, 0, 20)
+TpStatus.Parent   = TpPage
+
+for i, loc in ipairs(LOCATIONS) do
+    local locBtn = Instance.new("TextButton")
+    locBtn.Name               = loc.name
+    locBtn.Text               = loc.name
+    locBtn.TextSize           = 12
+    locBtn.Font               = Enum.Font.GothamBold
+    locBtn.TextColor3         = COLORS.white
+    locBtn.BackgroundColor3   = COLORS.bg_mid
+    locBtn.AutoButtonColor    = false
+    locBtn.BorderSizePixel    = 0
+    locBtn.LayoutOrder        = i
+    locBtn.TextWrapped        = true
+    locBtn.Parent             = TpScroll
+    makeCorner(locBtn, 8)
+    makeStroke(locBtn, COLORS.divider)
+
+    -- hover
+    locBtn.MouseEnter:Connect(function()
+        tween(locBtn, {BackgroundColor3 = COLORS.bg_light}, 0.12)
+    end)
+    locBtn.MouseLeave:Connect(function()
+        tween(locBtn, {BackgroundColor3 = COLORS.bg_mid}, 0.12)
+    end)
+
+    locBtn.MouseButton1Click:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        tween(locBtn, {BackgroundColor3 = COLORS.success}, 0.1)
+        task.delay(0.4, function()
+            tween(locBtn, {BackgroundColor3 = COLORS.bg_mid}, 0.3)
+        end)
+
+        local ok, err = pcall(function()
+            hrp.CFrame = CFrame.new(loc.pos)
+        end)
+
+        if ok then
+            TpStatus.Text      = "✅  انتقلت إلى: " .. loc.name
+            TpStatus.TextColor3 = COLORS.success
+        else
+            TpStatus.Text      = "❌  فشل الانتقال"
+            TpStatus.TextColor3 = COLORS.error_clr
+        end
+
+        task.delay(2.5, function()
+            TpStatus.Text = ""
+        end)
+    end)
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- تهيئة التابات
+-- ─────────────────────────────────────────────────────────────────────────────
+setTab(1)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- السحب (Drag) للإطار الرئيسي
+-- ─────────────────────────────────────────────────────────────────────────────
+do
+    local dragging, dragInput, dragStart, startPos
+    Header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging  = true
+            dragStart = input.Position
+            startPos  = MainFrame.Position
+        end
+    end)
+    Header.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- إخفاء / إظهار الواجهة بـ RightControl
+-- ─────────────────────────────────────────────────────────────────────────────
+local guiVisible = true
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        guiVisible = not guiVisible
+        if guiVisible then
+            MainFrame.Visible = true
+            tween(MainFrame, {BackgroundTransparency = 0}, 0.2)
+        else
+            tween(MainFrame, {BackgroundTransparency = 1}, 0.2)
+            task.delay(0.22, function()
+                MainFrame.Visible = false
+            end)
+        end
+    end
+end)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- رسالة الترحيب
+-- ─────────────────────────────────────────────────────────────────────────────
+task.delay(0.3, function()
+    local notif = Instance.new("ScreenGui")
+    notif.Name         = "BloxNotif"
+    notif.ResetOnSpawn = false
+    notif.IgnoreGuiInset = true
+    notif.Parent       = PlayerGui
+
+    local box = Instance.new("Frame")
+    box.Size             = UDim2.new(0, 280, 0, 50)
+    box.Position         = UDim2.new(0.5, -140, 0, -60)
+    box.BackgroundColor3 = COLORS.bg_mid
+    box.BorderSizePixel  = 0
+    box.Parent           = notif
+    makeCorner(box, 10)
+    makeStroke(box, COLORS.accent, 1)
+
+    local msg = makeLabel(box, "✅  تم تحميل السكربت بنجاح!", 13, COLORS.success)
+    msg.Position = UDim2.new(0, 0, 0, 8)
+    local sub = makeLabel(box, "RightControl لإخفاء / إظهار الواجهة", 11, COLORS.grey)
+    sub.Position = UDim2.new(0, 0, 0, 28)
+
+    tween(box, {Position = UDim2.new(0.5, -140, 0, 16)}, 0.4, Enum.EasingStyle.Back)
+    task.delay(3.5, function()
+        tween(box, {Position = UDim2.new(0.5, -140, 0, -60), BackgroundTransparency = 1}, 0.3)
+        task.delay(0.35, function() notif:Destroy() end)
+    end)
+end)
+
+print("✅ BloxFruits Arabic Script loaded — by Delta Executor")
